@@ -25,28 +25,33 @@
 <body>
   <a class="skip-link" href="#services">Перейти к услугам</a>
 
-  <!-- Floating navigation pill -->
+  <!-- Floating navigation bar: links · logo · actions -->
   <header class="nav" id="nav">
-    <a class="nav__logo" href="#top" aria-label="FoldProfi — на главную">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-        <rect x="3" y="3" width="8" height="18" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
-        <path d="M13 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" fill="none" stroke="currentColor" stroke-width="1.8"/>
-      </svg>
-      <span>FoldProfi</span>
-    </a>
     <nav class="nav__links" aria-label="Разделы">
       <a href="#services">Ремонт</a>
       <a href="#issues">Неисправности</a>
       <a href="#steps">Этапы</a>
       <a href="#film">Плёнка</a>
       <a href="#reviews">Отзывы</a>
-      <a href="#contacts">Контакты</a>
     </nav>
-    <a class="nav__phone" href="tel:+79857325565">+7 985 732-55-65</a>
-    <button class="nav__burger" type="button" aria-label="Меню" aria-expanded="false" aria-controls="mobile-menu">
-      <span></span><span></span>
-    </button>
+    <a class="nav__logo" href="#top" aria-label="FoldProfi — на главную">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <rect x="3" y="3" width="8" height="18" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M13 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" fill="none" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <span>FoldProfi<i>.</i></span>
+    </a>
+    <div class="nav__actions">
+      <a class="nav__link" href="#contacts">Контакты</a>
+      <a class="nav__cta" href="tel:+79857325565">Позвонить</a>
+      <button class="nav__burger" type="button" aria-label="Меню" aria-expanded="false" aria-controls="mobile-menu">
+        <span></span><span></span>
+      </button>
+    </div>
   </header>
+  <div class="nav-cursor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
 
   <div class="mobile-menu" id="mobile-menu" hidden>
     <a href="#services">Ремонт</a>
