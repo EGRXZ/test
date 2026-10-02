@@ -23,7 +23,7 @@ export function clampEdges(tex) {
 // softboxes reflect across it, and pull the glow down a touch.
 export function screenGlass(m) {
   if ('clearcoat' in m) {
-    m.clearcoat = 0.3;
+    m.clearcoat = 0.18;
     m.clearcoatRoughness = 0.12;
     m.specularIntensity = 0; // only the thin glass coat reflects, not the panel
   }
@@ -90,6 +90,26 @@ export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
 
   const mixer = new THREE.AnimationMixer(model);
   if (clip) mixer.clipAction(clip).play();
+
+  // The modelled spine is an 11 x 5 mm barrel: folded, it turns 90 deg and sticks
+  // out of the edge by ~5 mm (a real Fold's spine is ~1.5 mm proud). Flatten it
+  // towards its top edge and narrow it to stay within the folded thickness.
+  model.traverse((o) => {
+    if (!o.isMesh || !/^Hinge/.test(o.name) || o.geometry.userData.slimmed) return;
+    o.geometry = o.geometry.clone();
+    const pos = o.geometry.attributes.position;
+    o.geometry.computeBoundingBox();
+    const top = o.geometry.boundingBox.max.y;
+    for (let i = 0; i < pos.count; i++) {
+      pos.setX(i, pos.getX(i) * 0.93);
+      pos.setY(i, top + (pos.getY(i) - top) * 0.22);
+    }
+    pos.needsUpdate = true;
+    o.geometry.computeVertexNormals();
+    o.geometry.computeBoundingBox();
+    o.geometry.computeBoundingSphere();
+    o.geometry.userData.slimmed = true;
+  });
 
   // The two inner-display halves meet edge-to-edge at x = 0; rasterisation
   // leaves a hairline crack there that shows the body behind. Overlap them by
@@ -341,8 +361,9 @@ export async function createBarPhone(url = 'assets/models/bar-phone.glb') {
   return { root, tick: (t) => screen && screen.tick(t) };
 }
 
-// Clip "Fold": open until ~0.8 s, shut by ~2.1 s.
-const FLIP_START = 0.8;
+// Clip "Fold": flat until 0.667 s (by 0.8 s the top half is already bent ~5 deg,
+// which made the two screen halves catch the light differently), shut by ~2.1 s.
+const FLIP_START = 0.667;
 const FLIP_END = 2.1;
 
 export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
@@ -377,6 +398,28 @@ export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
       screens.push(liveScreen(m, layout, { maxW: layout === 'flipCover' ? 320 : 480 }));
     }
     o.material = done.get(name);
+  });
+
+  // Same seam treatment as the Fold: the halves meet at z = 0. The bottom half
+  // reaches 0.4 mm under the top one, sits a hair lower, and both get flat normals.
+  model.traverse((o) => {
+    const m = o.isMesh && /^InnerDisplay_(T|B)$/.exec(o.name);
+    if (!m || o.geometry.userData.seamClosed) return;
+    o.geometry = o.geometry.clone();
+    const pos = o.geometry.attributes.position;
+    const bottom = m[1] === 'B';
+    o.geometry.computeBoundingBox();
+    const edge = o.geometry.boundingBox.min.z;
+    for (let i = 0; i < bottom * pos.count; i++) {
+      if (pos.getZ(i) < edge + 2e-5) pos.setZ(i, edge - 0.0004);
+      pos.setY(i, pos.getY(i) - 0.00003);
+    }
+    pos.needsUpdate = true;
+    const nrm = o.geometry.attributes.normal;
+    if (nrm) { for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0); nrm.needsUpdate = true; }
+    o.geometry.computeBoundingBox();
+    o.geometry.computeBoundingSphere();
+    o.geometry.userData.seamClosed = true;
   });
 
   const flipHinges = [];
