@@ -11,6 +11,14 @@ const draco = new DRACOLoader().setDecoderPath('vendor/three/draco/');
 const loader = new GLTFLoader().setDRACOLoader(draco);
 const cache = new Map();
 
+// glTF textures default to REPEAT, so linear filtering at a screen's very edge
+// blends in the opposite edge of the wallpaper (a red line from the bottom of
+// the image along the top of the screen). Screens must clamp instead.
+export function clampEdges(tex) {
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+}
+
 export function loadModel(url) {
   if (!cache.has(url)) cache.set(url, loader.loadAsync(url));
   return cache.get(url);
@@ -47,6 +55,7 @@ export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
       // Screens carry their wallpaper in an emissive map; keep them out of tone mapping.
       if (m.emissiveMap) {
         m.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+        clampEdges(m.emissiveMap);
         m.toneMapped = false;
       }
       if (m.map) m.map.anisotropy = 8;
@@ -168,7 +177,7 @@ export async function createExplodedModel(url = 'assets/models/fold-exploded.glb
           const c = m.clone();
           c.userData.base = m.transparent ? m.opacity : 1;
           c.transparent = true;
-          if (c.map) c.map.anisotropy = 8;
+          if (c.map) { c.map.anisotropy = 8; clampEdges(c.map); }
           clones.set(m, c);
         }
         return clones.get(m);

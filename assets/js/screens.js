@@ -423,7 +423,8 @@ export function liveScreen(material, layout, { maxW = 480, fps = 12 } = {}) {
   // and the screen is never shown much smaller than the canvas.
   tex.generateMipmaps = false;
   tex.minFilter = THREE.LinearFilter;
-  if (src) { tex.wrapS = src.wrapS; tex.wrapT = src.wrapT; }
+  // Clamp, not the glTF default REPEAT: otherwise the opposite edge bleeds in.
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   material.emissiveMap = tex;
   material.emissive.setRGB(1, 1, 1);
   material.toneMapped = false;
