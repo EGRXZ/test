@@ -239,16 +239,18 @@ function initTiles() {
         rig.rotation.z = device.coverRoll ? Math.PI * ease(foldT) : 0;
         rig.position.y = -0.1 * (1 - foldT);
       } else if (type === 'watch') {
+        rig.position.y = 0;
         rig.rotation.y = -0.2 + d * 0.35 + dragYaw + hoverMix * 0.45;
         rig.rotation.x = 0.2 + drift(t * 0.13, seed + 3) * 0.05 * m;
         rig.rotation.z = -0.06;
       } else {
         // Mostly face the viewer so the live home screen reads; hover turns it to show the cameras.
+        rig.position.y = 0;
         rig.rotation.y = -0.3 + d * 0.3 + dragYaw + hoverMix * Math.PI;
         rig.rotation.x = 0.1;
         rig.rotation.z = -0.08;
       }
-      rig.position.y += drift(t * 0.3, seed + 5) * 0.02 * m;
+      rig.position.y += drift(t * 0.3, seed + 5) * 0.02 * m; // base y is reset above every frame
       // Soft shadow just under the object's current footprint, behind it (no visible floor).
       bounds.setFromObject(rig);
       const w = Math.max(0.6, bounds.max.x - bounds.min.x);
