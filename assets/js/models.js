@@ -307,3 +307,31 @@ export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
     tick(t) { screens.forEach((s) => s.tick(t)); },
   };
 }
+
+/* ---------------- Watch.glb (smart-watch tile) ---------------- */
+export async function createWatchModel(url = 'assets/models/watch.glb') {
+  const { liveScreen } = await import('./screens.js');
+  const gltf = await loadModel(url);
+  const model = gltf.scene.clone(true);
+  const root = new THREE.Group();
+  const inner = new THREE.Group();
+  const holder = new THREE.Group();
+  holder.add(model);
+  inner.add(holder);
+  root.add(inner);
+
+  let screen = null;
+  model.traverse((o) => {
+    if (o.isMesh && o.material && o.material.name === 'Watch_Display' && !screen) {
+      o.material = o.material.clone();
+      screen = liveScreen(o.material, 'watch', { maxW: 640, fps: 20 });
+    }
+  });
+  // Fit the whole watch (strap included) to ~3 units tall, like the phones.
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(holder, true);
+  holder.scale.setScalar(3 / box.getSize(new THREE.Vector3()).y);
+  const c = centreOn(holder, inner, root);
+  inner.position.set(-c.x, -c.y, -c.z);
+  return { root, tick: (t) => screen && screen.tick(t) };
+}

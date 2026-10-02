@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Stage, pointer, reducedMotion, webglAvailable } from './stage.js';
 import { createFold, createFlip, createBar, createWatch, createExplodedFold, makeMaterials, planeGeo } from './devices.js';
 import { ensureFonts, scratchedFilmTexture } from './textures.js';
-import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone } from './models.js';
+import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone, createWatchModel } from './models.js';
 
 const { clamp, lerp, smoothstep, damp } = THREE.MathUtils;
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -153,7 +153,7 @@ function initTiles() {
       try { return await make(); } catch (err) { console.warn(`${type} GLB failed, using procedural model`, err); return fallback(); }
     };
     if (type === 'flip') { device = await glb(createFlipPhone, () => createFlip(stage.renderer, mats)); fitH = 3.6; }
-    else if (type === 'watch') { device = createWatch(stage.renderer, mats); fitH = 3.6; }
+    else if (type === 'watch') { device = await glb(createWatchModel, () => createWatch(stage.renderer, mats)); fitH = 3.4; }
     else { device = await glb(createBarPhone, () => createBar(stage.renderer, mats)); fitH = 3.3; }
 
     const rig = new THREE.Group();

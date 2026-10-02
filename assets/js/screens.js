@@ -273,7 +273,92 @@ function drawFlipCover(ctx, w, h, t, img) {
   ctx.fillText('Ремонт готов', cx + ch * 0.9, cy + ch / 2);
 }
 
-export const LAYOUTS = { bar: drawBar, flipInner: drawFlipInner, flipCover: drawFlipCover };
+// Watch face: same design as the model's watch_face.jpg, but live — real time
+// and date, a seconds dot sweeping the tick ring, beating pulse, growing steps.
+const SHORT_DAYS = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+const SHORT_MONTHS = ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'];
+function gauge(ctx, cx, cy, r, p, value, label, lw) {
+  const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = '#2a2a2e';
+  ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
+  ctx.strokeStyle = '#e3965f';
+  ctx.beginPath(); ctx.arc(cx, cy, r, a0, a0 + (a1 - a0) * Math.min(1, p)); ctx.stroke();
+  ctx.fillStyle = '#f2f0ec';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  font(ctx, 600, r * 0.42, -0.02);
+  ctx.fillText(value, cx, cy);
+  ctx.fillStyle = '#8e8e93';
+  font(ctx, 500, r * 0.36, 0.02);
+  ctx.fillText(label, cx, cy + r * 1.45);
+}
+function drawWatch(ctx, w, h, t) {
+  const d = new Date();
+  const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h * 0.62);
+  g.addColorStop(0, '#1d140f');
+  g.addColorStop(1, '#000000');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  const cx = w / 2, cy = h * 0.508, R = w * 0.43;
+  const sec = d.getSeconds() + d.getMilliseconds() / 1000;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 60; i++) {
+    const a = (i / 60) * Math.PI * 2;
+    const big = i % 5 === 0;
+    const quarter = i % 15 === 0;
+    const passed = ((i - sec + 60) % 60) > 54; // a short peach trail behind the seconds dot
+    ctx.strokeStyle = big || passed ? '#e3965f' : '#5a5a5e';
+    ctx.lineWidth = big ? w * 0.0085 : w * 0.0045;
+    const r1 = R * (quarter ? 0.86 : big ? 0.88 : 0.93);
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1);
+    ctx.lineTo(cx + Math.sin(a) * R, cy - Math.cos(a) * R);
+    ctx.stroke();
+  }
+  const sa = (sec / 60) * Math.PI * 2;
+  ctx.fillStyle = '#e3965f';
+  ctx.beginPath();
+  ctx.arc(cx + Math.sin(sa) * R * 1.035, cy - Math.cos(sa) * R * 1.035, w * 0.012, 0, 7);
+  ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#e3965f';
+  font(ctx, 600, w * 0.045, 0.02);
+  ctx.fillText(`${SHORT_DAYS[d.getDay()]}  ${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`, cx, h * 0.345);
+  ctx.fillStyle = '#f2f0ec';
+  font(ctx, 600, w * 0.175, -0.03);
+  const blink = d.getMilliseconds() < 500 ? 1 : 0.35;
+  const hh = pad2(d.getHours()), mm = pad2(d.getMinutes());
+  const yT = h * 0.5;
+  const colonW = ctx.measureText(':').width;
+  const hW = ctx.measureText(hh).width;
+  ctx.textAlign = 'right';
+  ctx.fillText(hh, cx - colonW / 2, yT);
+  ctx.textAlign = 'left';
+  ctx.fillText(mm, cx + colonW / 2, yT);
+  ctx.textAlign = 'center';
+  ctx.globalAlpha = blink;
+  ctx.fillText(':', cx, yT - w * 0.012);
+  ctx.globalAlpha = 1;
+  void hW;
+
+  // Heart rate wobbles with a beat; steps keep climbing.
+  const beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2 * 1.2)), 12);
+  const bpm = 70 + Math.round(3 * Math.sin(t * 0.4) + beat * 2);
+  const steps = 8410 + Math.floor(t * 1.7);
+  const gr = w * 0.09;
+  gauge(ctx, w * 0.317, h * 0.627, gr * (1 + beat * 0.04), 0.55 + beat * 0.08, String(bpm), 'ПУЛЬС', w * 0.017);
+  gauge(ctx, w * 0.683, h * 0.627, gr, (steps % 10000) / 10000, steps.toLocaleString('ru-RU'), 'ШАГИ', w * 0.017);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#c27a52';
+  font(ctx, 600, w * 0.034, 0.02);
+  ctx.fillText('FOLDPROFI', cx, h * 0.788);
+}
+
+export const LAYOUTS = { bar: drawBar, flipInner: drawFlipInner, flipCover: drawFlipCover, watch: drawWatch };
 
 /**
  * Replace a glTF material's emissive wallpaper with a live canvas screen.
