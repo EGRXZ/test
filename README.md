@@ -23,6 +23,7 @@ python3 -m http.server 8000
 | `assets/js/devices.js` | Процедурные 3D-модели: Fold, Flip, смартфон, часы, телефон в разборе |
 | `assets/js/textures.js` | Содержимое экранов, нарисованное в canvas |
 | `assets/js/stage.js` | Рендерер: отдельный canvas на сцену, рисует только видимое |
+| `assets/img/` | Фото основателя и фото входа для схемы проезда (сама карта — inline SVG в `index.html`) |
 | `vendor/three/` | Three.js r170 (лежит локально, CDN не нужен) |
 
 ## 3D-сцены
