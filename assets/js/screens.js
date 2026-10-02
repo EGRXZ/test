@@ -428,7 +428,7 @@ export function liveScreen(material, layout, { maxW = 480, fps = 12 } = {}) {
   material.emissiveMap = tex;
   material.emissive.setRGB(1, 1, 1);
   // Glass over the panel: studio softboxes reflect across the live screen.
-  if ('clearcoat' in material) { material.clearcoat = 0.3; material.clearcoatRoughness = 0.04; material.specularIntensity = 0; }
+  if ('clearcoat' in material) { material.clearcoat = 0.3; material.clearcoatRoughness = 0.12; material.specularIntensity = 0; }
   material.roughness = 0.6;
   material.metalness = 0;
   material.emissiveIntensity = 0.9;

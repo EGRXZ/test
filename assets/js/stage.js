@@ -202,15 +202,9 @@ export class MultiStage {
 }
 
 function addLights(scene) {
-  // Neutral studio key + fill; reflections come from the environment softboxes.
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x101010, 0.15));
-  const key = new THREE.DirectionalLight(0xffffff, 1.4);
-  key.position.set(-4, 6, 6);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
-  fill.position.set(5, 1, 4);
-  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
-  rim.position.set(3, 4, -6);
-  scene.add(key, fill, rim);
+  // A single light source: the studio environment (softboxes). Punctual lights
+  // were dropped — on glossy screens they read as blown-out white disks.
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x101010, 0.2));
 }
 
 function start() {

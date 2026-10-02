@@ -24,7 +24,7 @@ export function clampEdges(tex) {
 export function screenGlass(m) {
   if ('clearcoat' in m) {
     m.clearcoat = 0.3;
-    m.clearcoatRoughness = 0.04;
+    m.clearcoatRoughness = 0.12;
     m.specularIntensity = 0; // only the thin glass coat reflects, not the panel
   }
   m.roughness = 0.6;
@@ -50,7 +50,9 @@ function liftPunchHoles(model) {
   model.traverse((o) => {
     // The hinge spine reaches the screen plane when the phone is open and shows
     // through the seam between the two display halves as streaks: push it back.
-    if (o.isMesh && /^Hinge/.test(o.name)) {
+    // Same for the bezel glass and the body shell: both meet the display plane
+    // at the fold seam and bled through it as a thin dark line.
+    if (o.isMesh && /^(Hinge|InnerGlass|Body)/.test(o.name)) {
       o.material = o.material.clone();
       o.material.polygonOffset = true;
       o.material.polygonOffsetFactor = 6;
@@ -66,8 +68,10 @@ function liftPunchHoles(model) {
 }
 
 /* ---------------- FoldPhone.glb ---------------- */
-// Clip "Fold": open until ~0.72 s, folds by ~2.0 s, reopens by ~3.9 s.
-const FOLD_START = 0.72;
+// Clip "Fold": flat until 0.667 s (the last key with both halves exactly
+// coplanar — by 0.72 s it is already bent ~1°, which shows as a seam and a
+// split highlight), folded by ~2.0 s, reopens by ~3.9 s.
+const FOLD_START = 0.667;
 const FOLD_END = 2.0;
 const clipTime = (t) => FOLD_START + THREE.MathUtils.clamp(t, 0, 1) * (FOLD_END - FOLD_START);
 
@@ -86,6 +90,36 @@ export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
 
   const mixer = new THREE.AnimationMixer(model);
   if (clip) mixer.clipAction(clip).play();
+
+  // The two inner-display halves meet edge-to-edge at x = 0; rasterisation
+  // leaves a hairline crack there that shows the body behind. Overlap them by
+  // 0.4 mm. (Geometry is shared between clones, so do it once.)
+  model.traverse((o) => {
+    const m = o.isMesh && /^InnerDisplay_(L|R)$/.exec(o.name);
+    if (!m || o.geometry.userData.seamClosed) return;
+    const pos = o.geometry.attributes.position;
+    // Only the left half reaches across, and sits 0.03 mm lower, so in the
+    // overlap the right half always wins the depth test (no z-fighting dashes).
+    // (Draco quantises positions, so find the actual inner edge instead of x = 0.)
+    const left = m[1] === 'L';
+    o.geometry.computeBoundingBox();
+    const edge = o.geometry.boundingBox.max.x;
+    for (let i = 0; i < left * pos.count; i++) {
+      if (pos.getX(i) > edge - 2e-5) pos.setX(i, edge + 0.0004);
+      pos.setY(i, pos.getY(i) - 0.00003);
+    }
+    pos.needsUpdate = true;
+    // Both halves are flat panels facing +Y: identical normals make the studio
+    // reflect across them as one sheet, with no brightness step at the fold.
+    const nrm = o.geometry.attributes.normal;
+    if (nrm) {
+      for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+      nrm.needsUpdate = true;
+    }
+    o.geometry.computeBoundingBox();
+    o.geometry.computeBoundingSphere();
+    o.geometry.userData.seamClosed = true;
+  });
 
   model.traverse((o) => {
     if (!o.isMesh) return;
@@ -142,8 +176,14 @@ export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
       front: screenBox.max.z - cOpen.z,
     },
   };
+  // Fully open, the hinge spine sits right under the display seam and still
+  // shows through as a dashed line on some GPUs; it's hidden from the front
+  // anyway, so only draw it while the phone is actually bending.
+  const hinges = [];
+  model.traverse((o) => { if (o.isMesh && /^Hinge/.test(o.name)) hinges.push(o); });
   // t: 0 = open flat, 1 = folded shut. Keeps the phone centred while it folds.
   api.setFold = (t) => {
+    hinges.forEach((h) => { h.visible = t > 0.01; });
     mixer.setTime(clipTime(t));
     tmp.lerpVectors(cOpen, cFolded, t);
     inner.position.set(-tmp.x, -tmp.y, -tmp.z);
@@ -339,6 +379,8 @@ export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
     o.material = done.get(name);
   });
 
+  const flipHinges = [];
+  model.traverse((o) => { if (o.isMesh && /^Hinge/.test(o.name)) flipHinges.push(o); });
   mixer.setTime(at(0));
   const cOpen = centreOn(holder, inner, root);
   mixer.setTime(at(1));
@@ -351,6 +393,7 @@ export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
     coverRoll: true,
     // t: 0 = open, 1 = shut
     setFold(t) {
+      flipHinges.forEach((h) => { h.visible = t > 0.01; });
       mixer.setTime(at(t));
       tmp.lerpVectors(cOpen, cShut, t);
       inner.position.set(-tmp.x, -tmp.y, -tmp.z);

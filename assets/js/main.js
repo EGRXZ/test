@@ -381,15 +381,17 @@ async function initFilm() {
   const base = Float32Array.from(oldGeo.attributes.position.array);
   const oldMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, map: scratchedFilmTexture(stage.renderer), transparent: true, opacity: 0.42,
-    roughness: 0.45, metalness: 0, side: THREE.DoubleSide, depthWrite: false,
+    roughness: 0.55, metalness: 0, specularIntensity: 0.4, side: THREE.DoubleSide, depthWrite: false,
   });
   const oldFilm = new THREE.Mesh(oldGeo, oldMat);
   oldFilm.position.z = 0.006;
   anchor.add(oldFilm);
 
+  // Satin, not mirror: a mirror coat turned the key light into a blown white disk.
   const newMat = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff, transparent: true, opacity: 0, roughness: 0.04, metalness: 0,
-    iridescence: 1, iridescenceIOR: 1.3, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false,
+    color: 0xffffff, transparent: true, opacity: 0, roughness: 0.35, metalness: 0,
+    iridescence: 1, iridescenceIOR: 1.3, clearcoat: 0.35, clearcoatRoughness: 0.3,
+    specularIntensity: 0.5, side: THREE.DoubleSide, depthWrite: false,
   });
   const newFilm = new THREE.Mesh(planeGeo(-fw / 2, -fh / 2, fw, fh, 0.14), newMat);
   anchor.add(newFilm);
