@@ -235,12 +235,21 @@ async function initIssues() {
   let hovered = null;
   let clicked = null;
   let current = undefined;
+  // While the mouse is over the list, the last hovered card stays selected —
+  // crossing the gap between cards must not fall back to scroll selection.
+  const list = section.querySelector('.issues__list');
+  let pointerInList = false;
+  list.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') pointerInList = true; });
+  list.addEventListener('pointerleave', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    pointerInList = false;
+    hovered = null;
+  });
   cards.forEach((card) => {
     const key = card.dataset.part;
     card.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') hovered = key; });
-    card.addEventListener('pointerleave', () => { if (hovered === key) hovered = null; });
     card.addEventListener('focus', () => { hovered = key; });
-    card.addEventListener('blur', () => { if (hovered === key) hovered = null; });
+    card.addEventListener('blur', () => { if (hovered === key && !pointerInList) hovered = null; });
     card.addEventListener('click', () => { clicked = clicked === key ? null : key; });
   });
 
@@ -261,7 +270,7 @@ async function initIssues() {
 
   let ex = 0;
   stage.onFrame = (dt, t) => {
-    const key = hovered || clicked || scrollActive();
+    const key = hovered || clicked || (pointerInList ? current : scrollActive());
     if (key !== current) {
       current = key;
       model.setActive(key);

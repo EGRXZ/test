@@ -428,22 +428,26 @@ export function createExplodedFold(renderer, mats = makeMaterials()) {
     layers,
     setActive(key) { active = key; },
     update(explode, dt, time) {
-      pulse = 0.5 + 0.5 * Math.sin(time * 4);
+      const pulse = 0.5 + 0.5 * Math.sin(time * 4);
+      const k = 1 - Math.exp(-dt * 10);
       for (const [key, l] of Object.entries(layers)) {
-        l.group.position.z = THREE.MathUtils.lerp(l.z0, l.z1, explode);
         const isOn = active === key;
         const dim = active && !isOn;
-        const k = 1 - Math.exp(-dt * 10);
+        // The selected part lifts out of the stack towards the viewer.
+        l.lift = (l.lift || 0) + ((isOn ? 0.22 : 0) - (l.lift || 0)) * k;
+        l.group.position.z = THREE.MathUtils.lerp(l.z0, l.z1, explode) + l.lift;
         for (const m of l.mats) {
           const base = m.userData.base ?? 1;
-          const target = dim ? base * 0.14 : (isOn && key === 'glass' ? 0.55 : base);
+          // Everything else turns into a faint ghost so the part's location reads.
+          const target = dim ? base * 0.05 : (isOn ? Math.max(base, key === 'glass' ? 0.35 : 1) : base);
           m.opacity += (target - m.opacity) * k;
           m.depthWrite = m.opacity > 0.95;
-          if (m.emissive) {
-            const e = isOn ? 0.25 + 0.35 * pulse : 0;
-            m.emissive.copy(PEACH).multiplyScalar(e);
+          if (m.emissive && !m.emissiveMap) {
+            m.emissive.copy(PEACH).multiplyScalar(isOn ? 0.45 + 0.45 * pulse : 0);
           }
         }
+        // Draw the selected part last so ghosts never cover it.
+        l.group.traverse((o) => { if (o.isMesh) o.renderOrder = isOn ? 10 : 0; });
       }
     },
   };
