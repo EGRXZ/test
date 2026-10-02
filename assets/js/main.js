@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Stage, MultiStage, makeSoftShadow, pointer, reducedMotion, webglAvailable } from './stage.js';
 import { createFold, createFlip, createBar, createWatch, createExplodedFold, makeMaterials, planeGeo } from './devices.js';
 import { ensureFonts, scratchedFilmTexture } from './textures.js';
+import { createAurora } from './aurora.js';
 import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone, createWatchModel } from './models.js';
 
 const { clamp, lerp, smoothstep, damp } = THREE.MathUtils;
@@ -18,6 +19,18 @@ initUI();
 if (!webglAvailable()) {
   document.documentElement.classList.add('no-webgl');
 } else {
+  // Aurora background (React Bits <Aurora />): palette stops, as specified.
+  try {
+    createAurora(document.querySelector('.aurora'), {
+      colorStops: ['#ffffff', '#0B2B36', '#9DB8A6'],
+      blend: 0.58,
+      amplitude: 1.0,
+      speed: 0.6,
+      paused: reducedMotion,
+    });
+  } catch (err) {
+    console.warn('Aurora failed', err);
+  }
   ensureFonts().then(async () => {
     try {
       await Promise.all([initTiles(), initHero(), initIssues(), initFilm()]);

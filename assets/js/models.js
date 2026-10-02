@@ -249,6 +249,15 @@ function rankByDepth(group) {
   });
   items.sort((a, b) => a[1] - b[1]).forEach(([o], i) => { o.userData.depthRank = i; });
 }
+// Warm-coloured parts (copper spreaders, gold contacts, amber flex, passives)
+// re-coloured into the site palette so nothing orange shows through the ghosts.
+const PALETTE_PARTS = {
+  FP_Copper: '#7f9c8a',
+  FP_Gold: '#9db8a6',
+  FP_Flex_Amber: '#1d3a3f',
+  FP_Passive: '#5b7065',
+};
+
 // Group z in the file is the exploded position; these are the assembled ones.
 const ASSEMBLED_Z = {
   back: -0.07, battery: -0.03, board: -0.035, audio: -0.03,
@@ -300,6 +309,7 @@ export async function createExplodedModel(url = 'assets/models/fold-exploded.glb
       const swap = (m) => {
         if (!clones.has(m)) {
           const c = m.clone();
+          if (PALETTE_PARTS[m.name]) c.color.set(PALETTE_PARTS[m.name]);
           c.userData.base = m.transparent ? m.opacity : 1;
           c.transparent = true;
           if (c.map) { c.map = tintTexture(c.map); c.map.anisotropy = 8; clampEdges(c.map); }

@@ -36,4 +36,10 @@
   --surface-warm-smoke: #5b7065;
 
   --shadow-lg: rgba(1, 16, 22, 0.45) 0px 10px 20px 0px;
+
+  /* cards: a soft diagonal fade from Вечнозелёный into the black canvas,
+     a hairline sage border and a faint top highlight — never a flat fill */
+  --card-fill: linear-gradient(155deg, rgba(48, 64, 64, 0.62) 0%, rgba(11, 43, 54, 0.38) 48%, rgba(4, 32, 44, 0.12) 100%);
+  --card-border: 1px solid rgba(157, 184, 166, 0.13);
+  --card-sheen: inset 0 1px 0 rgba(201, 209, 200, 0.07);
 }

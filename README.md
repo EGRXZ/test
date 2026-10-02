@@ -23,12 +23,14 @@ python3 -m http.server 8000
 | `assets/models/fold-phone.glb` | Fold из Blender с анимацией `Fold` — первый экран и блок «Плёнка» |
 | `assets/models/fold-exploded.glb` | Fold в разборе из Blender, сжат Draco — блок «Неисправности» |
 | `assets/models/bar-phone.glb`, `flip-phone.glb`, `watch.glb` | Смартфон, Flip и часы из Blender — плитки услуг |
+| `assets/js/aurora.js` | Фон Aurora — порт компонента React Bits `<Aurora />` на чистом JS (ogl) |
 | `assets/js/screens.js` | Живые рабочие столы поверх обоев моделей: часы, виджет ремонта, иконки, уведомления |
 | `assets/js/models.js` | Загрузка GLB и обёртки над ними: `setFold(t)` у телефона, раздвижение и подсветка слоёв у разборки |
 | `assets/js/devices.js` | Процедурные модели: Flip, смартфон, часы; запасной Fold на случай, если GLB не загрузится |
 | `assets/js/textures.js` | Содержимое экранов, нарисованное в canvas |
 | `assets/js/stage.js` | Рендерер: отдельный canvas на сцену, рисует только видимое |
 | `assets/img/` | Фото основателя и фото входа для схемы проезда (сама карта — inline SVG в `index.html`) |
+| `vendor/ogl/` | ogl 1.0.11 (Unlicense): core, math и Triangle — для фона Aurora |
 | `vendor/three/` | Three.js r170, GLTFLoader, DRACOLoader и декодер Draco — всё лежит локально, CDN не нужен |
 
 ## 3D-сцены
