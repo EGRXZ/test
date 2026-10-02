@@ -61,38 +61,8 @@ function initUI() {
   menu.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
 
-  initNavCursor();
-
   const y = document.getElementById('year');
   if (y) y.textContent = String(new Date().getFullYear());
-}
-
-// Over the bare nav bar and the logo the pointer turns into a violet arrow
-// bubble that trails the mouse; links and buttons keep the normal cursor.
-function initNavCursor() {
-  const nav = document.getElementById('nav');
-  const dot = document.querySelector('.nav-cursor');
-  if (!nav || !dot || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-  document.documentElement.classList.add('has-nav-cursor');
-
-  const ease = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0.25;
-  let x = 0, y = 0, cx = 0, cy = 0, raf = 0;
-  const tick = () => {
-    cx += (x - cx) * ease;
-    cy += (y - cy) * ease;
-    dot.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
-    raf = Math.abs(x - cx) + Math.abs(y - cy) > 0.1 ? requestAnimationFrame(tick) : 0;
-  };
-
-  nav.addEventListener('pointermove', (e) => {
-    if (!dot.classList.contains('is-on')) { cx = e.clientX; cy = e.clientY; }
-    x = e.clientX;
-    y = e.clientY;
-    const t = e.target.closest('a, button');
-    dot.classList.toggle('is-on', !t || t.classList.contains('nav__logo'));
-    if (!raf) raf = requestAnimationFrame(tick);
-  });
-  nav.addEventListener('pointerleave', () => dot.classList.remove('is-on'));
 }
 
 // Blender model first; fall back to the procedural one if it fails to load.

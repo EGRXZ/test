@@ -171,32 +171,6 @@ p { margin: 0; }
 .nav__cta:active, .nav__links a:active, .nav__link:active { transform: scale(.97); }
 .nav__burger { display: none; }
 
-/* Violet arrow cursor over the bare bar and the logo (fine pointers only, toggled by JS) */
-.nav-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin: -20px 0 0 -20px;
-  border-radius: 50%;
-  background: var(--color-twilight-violet);
-  box-shadow: 0 6px 18px rgba(83, 81, 243, .45);
-  color: var(--color-paper-white);
-  pointer-events: none;
-  opacity: 0;
-  scale: .3;
-  transition: opacity .2s ease, scale .25s cubic-bezier(.3, 1.5, .5, 1);
-}
-.nav-cursor.is-on { opacity: 1; scale: 1; }
-.has-nav-cursor .nav,
-.has-nav-cursor .nav__logo { cursor: none; }
-.has-nav-cursor .nav__links a,
-.has-nav-cursor .nav__actions > * { cursor: pointer; }
-
 .mobile-menu {
   position: fixed;
   inset: 76px 16px auto;
