@@ -441,13 +441,21 @@ export function createExplodedFold(renderer, mats = makeMaterials()) {
           // Everything else turns into a faint ghost so the part's location reads.
           const target = dim ? base * 0.05 : (isOn ? Math.max(base, key === 'glass' ? 0.35 : 1) : base);
           m.opacity += (target - m.opacity) * k;
-          m.depthWrite = m.opacity > 0.95;
+          if (Math.abs(target - m.opacity) < 0.002) m.opacity = target;
+          // Solid parts render in the opaque pass so they always hide what's behind
+          // them; only fading or genuinely see-through parts go transparent.
+          const see = m.opacity < 0.999;
+          if (m.transparent !== see) { m.transparent = see; m.needsUpdate = true; }
+          // The selected layer keeps writing depth while it fades in, so its own
+          // back parts can't show through its front (e.g. copper through the screen).
+          m.depthWrite = !see || isOn;
           if (m.emissive && !m.emissiveMap) {
             m.emissive.copy(PEACH).multiplyScalar(isOn ? 0.45 + 0.45 * pulse : 0);
           }
         }
         // Draw the selected part last so ghosts never cover it.
-        l.group.traverse((o) => { if (o.isMesh) o.renderOrder = isOn ? 10 : 0; });
+        // Within it, back-most parts first and the front-most (screen) last.
+        l.group.traverse((o) => { if (o.isMesh) o.renderOrder = isOn ? 10 + (o.userData.depthRank || 0) : 0; });
       }
     },
   };
