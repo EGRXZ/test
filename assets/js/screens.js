@@ -432,6 +432,10 @@ export function liveScreen(material, layout, { maxW = 480, fps = 12 } = {}) {
   material.roughness = 0.6;
   material.metalness = 0;
   material.emissiveIntensity = 0.9;
+  // The panel sits ~0.1 mm from the bezel glass in the models: make it win the depth test.
+  material.polygonOffset = true;
+  material.polygonOffsetFactor = -2;
+  material.polygonOffsetUnits = -4;
   material.toneMapped = false;
   material.needsUpdate = true;
 

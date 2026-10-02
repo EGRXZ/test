@@ -30,6 +30,10 @@ export function screenGlass(m) {
   m.roughness = 0.6;
   m.metalness = 0;
   m.emissiveIntensity = 0.9;
+  // The panel sits ~0.1 mm from the bezel glass in the models: make it win the depth test.
+  m.polygonOffset = true;
+  m.polygonOffsetFactor = -2;
+  m.polygonOffsetUnits = -4;
 }
 
 export function loadModel(url) {
@@ -40,6 +44,27 @@ export function loadModel(url) {
 // Target height (world units) the scenes were tuned for.
 const TARGET_H = 2.96;
 
+// Punch-hole cameras sit on the screen surface; they must out-rank the screen's
+// own depth offset (see screenGlass) or the panel paints over them.
+function liftPunchHoles(model) {
+  model.traverse((o) => {
+    // The hinge spine reaches the screen plane when the phone is open and shows
+    // through the seam between the two display halves as streaks: push it back.
+    if (o.isMesh && /^Hinge/.test(o.name)) {
+      o.material = o.material.clone();
+      o.material.polygonOffset = true;
+      o.material.polygonOffsetFactor = 6;
+      o.material.polygonOffsetUnits = 24;
+      return;
+    }
+    if (!o.isMesh || !/PunchHole/i.test(o.name)) return;
+    o.material = o.material.clone();
+    o.material.polygonOffset = true;
+    o.material.polygonOffsetFactor = -4;
+    o.material.polygonOffsetUnits = -12;
+  });
+}
+
 /* ---------------- FoldPhone.glb ---------------- */
 // Clip "Fold": open until ~0.72 s, folds by ~2.0 s, reopens by ~3.9 s.
 const FOLD_START = 0.72;
@@ -49,6 +74,7 @@ const clipTime = (t) => FOLD_START + THREE.MathUtils.clamp(t, 0, 1) * (FOLD_END 
 export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
   const gltf = await loadModel(url);
   const model = gltf.scene.clone(true);
+  liftPunchHoles(model);
   const clip = gltf.animations.find((a) => a.name === 'Fold') || gltf.animations[0];
 
   const root = new THREE.Group();
@@ -254,6 +280,7 @@ export async function createBarPhone(url = 'assets/models/bar-phone.glb') {
   const { liveScreen } = await import('./screens.js');
   const gltf = await loadModel(url);
   const model = gltf.scene.clone(true);
+  liftPunchHoles(model);
   const root = new THREE.Group();
   const inner = new THREE.Group();
   const holder = new THREE.Group();
@@ -282,6 +309,7 @@ export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
   const { liveScreen } = await import('./screens.js');
   const gltf = await loadModel(url);
   const model = gltf.scene.clone(true);
+  liftPunchHoles(model);
   const clip = gltf.animations.find((a) => a.name === 'Fold') || gltf.animations[0];
   const root = new THREE.Group();
   const inner = new THREE.Group();

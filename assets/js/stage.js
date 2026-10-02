@@ -81,7 +81,9 @@ export class Stage {
     this.scene.environment = studioEnvironment(this.renderer);
     this.scene.environmentIntensity = envIntensity;
 
-    this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
+    // Near plane far from the lens: depth precision is what keeps the near-coplanar
+    // screen/glass layers of the models from z-fighting.
+    this.camera = new THREE.PerspectiveCamera(fov, 1, Math.max(0.5, z - 9), z + 12);
     this.camera.position.set(0, 0, z);
     addLights(this.scene);
 
@@ -157,7 +159,7 @@ export class MultiStage {
     scene.environment = this.env;
     scene.environmentIntensity = envIntensity;
     addLights(scene);
-    const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(fov, 1, Math.max(0.5, z - 9), z + 12);
     camera.position.set(0, 0, z);
     const view = {
       el, scene, camera, renderer: this.renderer, onFrame: null, visible: false,
