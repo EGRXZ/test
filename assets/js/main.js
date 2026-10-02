@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Stage, MultiStage, pointer, reducedMotion, webglAvailable } from './stage.js';
+import { Stage, MultiStage, makeSoftShadow, pointer, reducedMotion, webglAvailable } from './stage.js';
 import { createFold, createFlip, createBar, createWatch, createExplodedFold, makeMaterials, planeGeo } from './devices.js';
 import { ensureFonts, scratchedFilmTexture } from './textures.js';
 import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone, createWatchModel } from './models.js';
@@ -7,6 +7,10 @@ import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone, 
 const { clamp, lerp, smoothstep, damp } = THREE.MathUtils;
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const mobileQuery = window.matchMedia('(max-width: 900px)');
+
+// Organic idle drift (sum of incommensurate sines, roughly -1..1) — reads like a
+// hand-held camera move rather than a metronome.
+const drift = (t, seed = 0) => 0.6 * Math.sin(t + seed) + 0.3 * Math.sin(t * 2.13 + 1.3 + seed) + 0.1 * Math.sin(t * 4.7 + 0.5 + seed);
 
 document.documentElement.classList.remove('no-js');
 initUI();
@@ -117,7 +121,7 @@ function sectionProgress(el) {
 /* ------------------------------------------------------------------ */
 async function initHero() {
   const hero = document.getElementById('hero');
-  const stage = new Stage(document.getElementById('hero-canvas'), { fov: 28, z: 11 });
+  const stage = new Stage(document.getElementById('hero-canvas'), { fov: 18, z: 17 });
   const fold = await foldPhone(stage);
   // In the Blender model the cover screen faces away when folded: turn it round.
   const coverYaw = fold.screen ? Math.PI : 0;
@@ -147,17 +151,17 @@ async function initHero() {
     rig.scale.setScalar(scale);
 
     const idle = reducedMotion ? 0 : 1;
-    const yawIdle = Math.sin(t * 0.5) * 0.28 * (1 - open) * idle;
+    const yawIdle = drift(t * 0.22) * 0.2 * (1 - open) * idle;
     rig.rotation.y = (coverYaw - 0.5) * (1 - open) - spin * Math.PI * 2 + yawIdle - 0.16 * open + pointer.sx * 0.22;
     rig.rotation.x = 0.14 * (1 - open) + 0.06 + pointer.sy * 0.12;
     rig.rotation.z = -0.06 * (1 - open);
 
     if (mobile) {
       rig.position.x = 0;
-      rig.position.y = lerp(-view.h * 0.19, view.h * 0.12, outro) + Math.sin(t * 1.1) * 0.04 * idle;
+      rig.position.y = lerp(-view.h * 0.19, view.h * 0.12, outro) + drift(t * 0.35, 2) * 0.025 * idle;
     } else {
       rig.position.x = lerp(view.w * 0.22, view.w * 0.2, open) + lerp(0, view.w * 0.04, outro);
-      rig.position.y = Math.sin(t * 1.1) * 0.05 * idle;
+      rig.position.y = drift(t * 0.35, 2) * 0.03 * idle;
     }
 
     hero.style.setProperty('--hero-text', String(1 - smoothstep(sp, 0.5, 0.64)));
@@ -174,7 +178,7 @@ function initTiles() {
   const mats = makeMaterials();
   const multi = new MultiStage(document.querySelector('.tiles__gl'), { dpr: 1.5 });
   return Promise.all([...document.querySelectorAll('.tile__canvas')].map(async (canvas) => {
-    const stage = multi.addView(canvas, { fov: 26, z: 10, envIntensity: 0.7 });
+    const stage = multi.addView(canvas, { fov: 16, z: 16.3 });
     const type = canvas.dataset.model;
     const tile = canvas.closest('.tile');
     let device;
@@ -190,6 +194,9 @@ function initTiles() {
     const rig = new THREE.Group();
     rig.add(device.root);
     stage.scene.add(rig);
+    const shadow = makeSoftShadow(2, 0.36, 0.5);
+    const bounds = new THREE.Box3();
+    stage.scene.add(shadow);
     stage.warm();
 
     let hover = false;
@@ -210,34 +217,43 @@ function initTiles() {
 
     let foldT = 1;
     let hoverMix = 0;
+    const seed = type.length * 1.7;
     stage.onFrame = (dt, t) => {
       const view = stage.viewSize();
-      rig.scale.setScalar(Math.min(1, (view.h * 0.86) / fitH, (view.w * 0.8) / 2));
+      const k = Math.min(1, (view.h * 0.86) / fitH, (view.w * 0.8) / 2);
+      rig.scale.setScalar(k);
       if (!dragging) { dragYaw += vel * dt; vel *= Math.exp(-dt * 3); }
-      hoverMix = damp(hoverMix, hover ? 1 : 0, 5, dt);
+      // Slow, inertial easing towards hover state — no snapping.
+      hoverMix = damp(hoverMix, hover ? 1 : 0, 2.2, dt);
       const m = reducedMotion ? 0 : 1;
+      const d = drift(t * 0.18, seed) * m;
 
       if (type === 'flip') {
-        // Loops: closed → open → closed; hover keeps it open.
-        const cyc = (Math.sin(t * 0.9) + 1) / 2;
-        const auto = smoothstep(cyc, 0.25, 0.75);
-        foldT = damp(foldT, hover ? 0 : 1 - auto * m, 4, dt);
+        // 10 s loop with holds: shut → opens → stays open → shuts. Hover keeps it open.
+        const c = (t % 10) / 10;
+        const auto = smoothstep(c, 0.25, 0.4) * (1 - smoothstep(c, 0.78, 0.93));
+        foldT = damp(foldT, hover ? 0 : 1 - auto * m, 2.6, dt);
         device.setFold(foldT);
-        rig.rotation.y = -0.45 + Math.sin(t * 0.6) * 0.35 * m + dragYaw;
-        rig.rotation.x = 0.18 + (1 - foldT) * 0.12;
+        rig.rotation.y = -0.4 + d * 0.25 + dragYaw;
+        rig.rotation.x = 0.14 + (1 - foldT) * 0.1;
         rig.rotation.z = device.coverRoll ? Math.PI * ease(foldT) : 0;
         rig.position.y = -0.1 * (1 - foldT);
       } else if (type === 'watch') {
-        rig.rotation.y = Math.sin(t * 0.7) * 0.6 * m + dragYaw + hoverMix * 0.5;
-        rig.rotation.x = 0.25 + Math.sin(t * 0.5) * 0.08 * m;
-        rig.rotation.z = -0.08;
+        rig.rotation.y = -0.2 + d * 0.35 + dragYaw + hoverMix * 0.45;
+        rig.rotation.x = 0.2 + drift(t * 0.13, seed + 3) * 0.05 * m;
+        rig.rotation.z = -0.06;
       } else {
         // Mostly face the viewer so the live home screen reads; hover turns it to show the cameras.
-        rig.rotation.y = -0.3 + Math.sin(t * 0.5) * 0.45 * m + dragYaw + hoverMix * Math.PI;
-        rig.rotation.x = 0.12;
-        rig.rotation.z = -0.1;
+        rig.rotation.y = -0.3 + d * 0.3 + dragYaw + hoverMix * Math.PI;
+        rig.rotation.x = 0.1;
+        rig.rotation.z = -0.08;
       }
-      rig.position.y += Math.sin(t * 1.3) * 0.002 * m;
+      rig.position.y += drift(t * 0.3, seed + 5) * 0.02 * m;
+      // Soft shadow just under the object's current footprint, behind it (no visible floor).
+      bounds.setFromObject(rig);
+      const w = Math.max(0.6, bounds.max.x - bounds.min.x);
+      shadow.position.set((bounds.max.x + bounds.min.x) / 2, bounds.min.y - 0.04, -1.5);
+      shadow.scale.set(w * 1.25, w * 0.2, 1);
       if (device.tick) device.tick(t);
     };
   }));
@@ -251,7 +267,7 @@ async function initIssues() {
   const canvas = document.getElementById('issues-canvas');
   const caption = document.getElementById('issues-caption');
   const cards = [...section.querySelectorAll('.issue')];
-  const stage = new Stage(canvas, { fov: 30, z: 12, dpr: 1.5, envIntensity: 0.6 });
+  const stage = new Stage(canvas, { fov: 20, z: 18.2, dpr: 1.5 });
   let model;
   try {
     model = await createExplodedModel();
@@ -337,7 +353,7 @@ async function initIssues() {
 async function initFilm() {
   const card = document.querySelector('.film-card');
   const label = document.getElementById('film-label');
-  const stage = new Stage(document.getElementById('film-canvas'), { fov: 26, z: 11, dpr: 1.5, envIntensity: 0.7 });
+  const stage = new Stage(document.getElementById('film-canvas'), { fov: 16, z: 18, dpr: 1.5 });
   const fold = await foldPhone(stage);
   fold.setFold(0);
   const rig = new THREE.Group();

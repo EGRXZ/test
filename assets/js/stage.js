@@ -1,7 +1,59 @@
 // Minimal multi-canvas renderer: each Stage owns one canvas, renders only
 // while on screen, and shares a single requestAnimationFrame loop.
 import * as THREE from 'three';
-import { RoomEnvironment } from '../../vendor/three/RoomEnvironment.js';
+// Product-photo look: a dark studio with large white softboxes for long, crisp
+// highlights on metal and glass (instead of three's grey RoomEnvironment).
+export function studioEnvironment(renderer) {
+  const scene = new THREE.Scene();
+  const room = new THREE.Mesh(
+    new THREE.BoxGeometry(24, 16, 24),
+    new THREE.MeshBasicMaterial({ color: 0x0b0b0b, side: THREE.BackSide }),
+  );
+  scene.add(room);
+  const panel = (w, h, intensity, pos, look, tint = 0xffffff) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(tint).multiplyScalar(intensity), side: THREE.DoubleSide }),
+    );
+    m.position.set(...pos);
+    m.lookAt(...look);
+    scene.add(m);
+  };
+  panel(10, 5, 2.6, [0, 7.5, 1], [0, 0, 0]); // overhead softbox
+  panel(1.6, 10, 5.0, [-8, 0.5, 3], [0, 0, 0]); // key strip, left-front
+  panel(1.2, 10, 3.6, [8, 0.5, -4], [0, 0, 0]); // rim strip, right-back
+  panel(1.0, 8, 2.2, [-6, 0, -7], [0, 0, 0], 0xffe6d6); // faint warm kicker
+  panel(9, 1.2, 1.0, [0, -5, 7], [0, 0, 0]); // low front bounce
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(scene, 0.02).texture;
+  pmrem.dispose();
+  scene.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  return env;
+}
+
+// Soft elliptical shadow billboard: grounds an object with no visible floor.
+let shadowTex = null;
+export function makeSoftShadow(width = 2.4, height = 0.42, opacity = 0.55) {
+  if (!shadowTex) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grd.addColorStop(0, 'rgba(0,0,0,1)');
+    grd.addColorStop(0.45, 'rgba(0,0,0,0.55)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 256, 256);
+    shadowTex = new THREE.CanvasTexture(c);
+  }
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false, toneMapped: false }),
+  );
+  m.scale.set(width, height, 1);
+  m.renderOrder = -1;
+  return m;
+}
 
 const stages = new Set();
 let last = performance.now();
@@ -16,20 +68,18 @@ window.addEventListener('pointermove', (e) => {
 export const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export class Stage {
-  constructor(canvas, { fov = 30, z = 10, dpr = 1.75, exposure = 1.05, envIntensity = 0.55 } = {}) {
+  constructor(canvas, { fov = 30, z = 10, dpr = 1.75, exposure = 1.0, envIntensity = 1 } = {}) {
     this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = exposure;
     this.renderer.setClearColor(0x000000, 0);
 
     this.scene = new THREE.Scene();
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environment = studioEnvironment(this.renderer);
     this.scene.environmentIntensity = envIntensity;
-    pmrem.dispose();
 
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
     this.camera.position.set(0, 0, z);
@@ -78,18 +128,16 @@ export class Stage {
 // view). Cheaper than a WebGL context per view: one context, one environment
 // map, one composited layer. Views expose the same fields scenes use on Stage.
 export class MultiStage {
-  constructor(canvas, { dpr = 1.5, exposure = 1.05 } = {}) {
+  constructor(canvas, { dpr = 1.5, exposure = 1.0 } = {}) {
     this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = exposure;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.autoClear = false;
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
+    this.env = studioEnvironment(this.renderer);
     this.views = [];
     this.visible = false;
     new ResizeObserver(() => this.resize()).observe(canvas);
@@ -104,7 +152,7 @@ export class MultiStage {
   }
 
   // el: element whose box the view occupies (inside the overlay canvas' area).
-  addView(el, { fov = 30, z = 10, envIntensity = 0.55 } = {}) {
+  addView(el, { fov = 30, z = 10, envIntensity = 1 } = {}) {
     const scene = new THREE.Scene();
     scene.environment = this.env;
     scene.environmentIntensity = envIntensity;
@@ -152,16 +200,15 @@ export class MultiStage {
 }
 
 function addLights(scene) {
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x0a0a0a, 0.35));
-  const key = new THREE.DirectionalLight(0xfff1e8, 2.2);
-  key.position.set(3, 5, 7);
-  const ember = new THREE.DirectionalLight(0xe3a081, 3.2);
-  ember.position.set(-6, 2, -2);
-  const violet = new THREE.DirectionalLight(0x5351f3, 4);
-  violet.position.set(6, -3, -4);
-  const under = new THREE.PointLight(0xe3a081, 6, 12, 2);
-  under.position.set(0, -3.5, 2.5);
-  scene.add(key, ember, violet, under);
+  // Neutral studio key + fill; reflections come from the environment softboxes.
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x101010, 0.15));
+  const key = new THREE.DirectionalLight(0xffffff, 1.4);
+  key.position.set(-4, 6, 6);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  fill.position.set(5, 1, 4);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+  rim.position.set(3, 4, -6);
+  scene.add(key, fill, rim);
 }
 
 function start() {

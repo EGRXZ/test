@@ -19,6 +19,19 @@ export function clampEdges(tex) {
   tex.needsUpdate = true;
 }
 
+// A screen is glass over a lit panel: give it a mirror-like coat so the studio
+// softboxes reflect across it, and pull the glow down a touch.
+export function screenGlass(m) {
+  if ('clearcoat' in m) {
+    m.clearcoat = 0.3;
+    m.clearcoatRoughness = 0.04;
+    m.specularIntensity = 0; // only the thin glass coat reflects, not the panel
+  }
+  m.roughness = 0.6;
+  m.metalness = 0;
+  m.emissiveIntensity = 0.9;
+}
+
 export function loadModel(url) {
   if (!cache.has(url)) cache.set(url, loader.loadAsync(url));
   return cache.get(url);
@@ -56,6 +69,7 @@ export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
       if (m.emissiveMap) {
         m.emissiveMap.colorSpace = THREE.SRGBColorSpace;
         clampEdges(m.emissiveMap);
+        screenGlass(m);
         m.toneMapped = false;
       }
       if (m.map) m.map.anisotropy = 8;
