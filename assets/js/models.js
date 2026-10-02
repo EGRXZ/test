@@ -117,6 +117,33 @@ export async function createExplodedModel(url = 'assets/models/fold-exploded.glb
   const root = new THREE.Group();
   root.add(scene);
 
+  // In the source model the display flex cables wrap round the bottom edge and
+  // end up 3 mm in FRONT of the screen, poking through it. Push every vertex of
+  // the display layer's extra parts that lies inside the panel's footprint back
+  // behind the panel (the panel is display_0, the screen is display_1).
+  const displayGroup = top.getObjectByName('display');
+  if (displayGroup) {
+    const panel = displayGroup.getObjectByName('display_0');
+    const pb = panel ? new THREE.Box3().setFromBufferAttribute(panel.geometry.attributes.position) : null;
+    if (pb) {
+      const behind = pb.min.z - 0.001;
+      displayGroup.traverse((o) => {
+        if (!o.isMesh || o === panel || o.name === 'display_1') return;
+        o.geometry = o.geometry.clone();
+        const pos = o.geometry.attributes.position;
+        let moved = 0;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+          if (z > behind && x > pb.min.x && x < pb.max.x && y > pb.min.y - 0.05 && y < pb.max.y + 0.05) {
+            pos.setZ(i, behind);
+            moved++;
+          }
+        }
+        if (moved) { pos.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingSphere(); }
+      });
+    }
+  }
+
   const layers = {};
   for (const g of [...top.children]) {
     const key = g.name;
