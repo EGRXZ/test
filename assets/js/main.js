@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Stage, pointer, reducedMotion, webglAvailable } from './stage.js';
 import { createFold, createFlip, createBar, createWatch, createExplodedFold, makeMaterials, planeGeo } from './devices.js';
 import { ensureFonts, scratchedFilmTexture } from './textures.js';
+import { createFoldPhone, createExplodedModel } from './models.js';
 
 const { clamp, lerp, smoothstep, damp } = THREE.MathUtils;
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -13,12 +14,10 @@ initUI();
 if (!webglAvailable()) {
   document.documentElement.classList.add('no-webgl');
 } else {
-  ensureFonts().then(() => {
+  ensureFonts().then(async () => {
     try {
-      initHero();
       initTiles();
-      initIssues();
-      initFilm();
+      await Promise.all([initHero(), initIssues(), initFilm()]);
     } catch (err) {
       console.error(err);
       document.documentElement.classList.add('no-webgl');
@@ -67,6 +66,16 @@ function initUI() {
   if (y) y.textContent = String(new Date().getFullYear());
 }
 
+// Blender model first; fall back to the procedural one if it fails to load.
+async function foldPhone(stage) {
+  try {
+    return await createFoldPhone();
+  } catch (err) {
+    console.warn('FoldPhone.glb failed, using procedural model', err);
+    return createFold(stage.renderer);
+  }
+}
+
 // 0 → 1 progress of a tall section scrolled through the viewport.
 function sectionProgress(el) {
   const r = el.getBoundingClientRect();
@@ -77,10 +86,12 @@ function sectionProgress(el) {
 /* ------------------------------------------------------------------ */
 /* HERO: folded phone spins, then unfolds as you scroll                */
 /* ------------------------------------------------------------------ */
-function initHero() {
+async function initHero() {
   const hero = document.getElementById('hero');
   const stage = new Stage(document.getElementById('hero-canvas'), { fov: 28, z: 11 });
-  const fold = createFold(stage.renderer);
+  const fold = await foldPhone(stage);
+  // In the Blender model the cover screen faces away when folded: turn it round.
+  const coverYaw = fold.screen ? Math.PI : 0;
   const rig = new THREE.Group();
   rig.add(fold.root);
   stage.scene.add(rig);
@@ -108,7 +119,7 @@ function initHero() {
 
     const idle = reducedMotion ? 0 : 1;
     const yawIdle = Math.sin(t * 0.5) * 0.28 * (1 - open) * idle;
-    rig.rotation.y = -0.5 * (1 - open) - spin * Math.PI * 2 + yawIdle - 0.16 * open + pointer.sx * 0.22;
+    rig.rotation.y = (coverYaw - 0.5) * (1 - open) - spin * Math.PI * 2 + yawIdle - 0.16 * open + pointer.sx * 0.22;
     rig.rotation.x = 0.14 * (1 - open) + 0.06 + pointer.sy * 0.12;
     rig.rotation.z = -0.06 * (1 - open);
 
@@ -198,13 +209,19 @@ function initTiles() {
 /* ------------------------------------------------------------------ */
 /* ISSUES: exploded Fold; hovering a problem lights up the part        */
 /* ------------------------------------------------------------------ */
-function initIssues() {
+async function initIssues() {
   const section = document.getElementById('issues');
   const canvas = document.getElementById('issues-canvas');
   const caption = document.getElementById('issues-caption');
   const cards = [...section.querySelectorAll('.issue')];
   const stage = new Stage(canvas, { fov: 30, z: 12, dpr: 1.5, envIntensity: 0.6 });
-  const model = createExplodedFold(stage.renderer);
+  let model;
+  try {
+    model = await createExplodedModel();
+  } catch (err) {
+    console.warn('fold-exploded.glb failed, using procedural model', err);
+    model = createExplodedFold(stage.renderer);
+  }
   const rig = new THREE.Group();
   rig.add(model.root);
   stage.scene.add(rig);
@@ -271,17 +288,30 @@ function initIssues() {
 /* ------------------------------------------------------------------ */
 /* FILM: old film peels off, new one drops into place                  */
 /* ------------------------------------------------------------------ */
-function initFilm() {
+async function initFilm() {
   const card = document.querySelector('.film-card');
   const label = document.getElementById('film-label');
   const stage = new Stage(document.getElementById('film-canvas'), { fov: 26, z: 11, dpr: 1.5, envIntensity: 0.7 });
-  const fold = createFold(stage.renderer);
+  const fold = await foldPhone(stage);
   fold.setFold(0);
   const rig = new THREE.Group();
   rig.add(fold.root);
   stage.scene.add(rig);
 
-  const fw = 2 * fold.W - 0.08, fh = fold.H - 0.08;
+  // Film sits on the inner screen: measured from the GLB, or the procedural layout.
+  const anchor = new THREE.Group();
+  let fw, fh;
+  if (fold.screen) {
+    const { center, size, front } = fold.screen;
+    anchor.position.set(center.x, center.y, front);
+    fold.root.add(anchor);
+    fw = size.x + 0.02;
+    fh = size.y + 0.02;
+  } else {
+    fold.inner.add(anchor);
+    fw = 2 * fold.W - 0.08;
+    fh = fold.H - 0.08;
+  }
   const seg = 48;
   const oldGeo = new THREE.PlaneGeometry(fw, fh, seg, seg);
   const base = Float32Array.from(oldGeo.attributes.position.array);
@@ -291,14 +321,14 @@ function initFilm() {
   });
   const oldFilm = new THREE.Mesh(oldGeo, oldMat);
   oldFilm.position.z = 0.006;
-  fold.inner.add(oldFilm);
+  anchor.add(oldFilm);
 
   const newMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, transparent: true, opacity: 0, roughness: 0.04, metalness: 0,
     iridescence: 1, iridescenceIOR: 1.3, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false,
   });
   const newFilm = new THREE.Mesh(planeGeo(-fw / 2, -fh / 2, fw, fh, 0.14), newMat);
-  fold.inner.add(newFilm);
+  anchor.add(newFilm);
 
   // Light sweep across the fresh film
   const band = document.createElement('canvas');
@@ -319,7 +349,7 @@ function initFilm() {
     new THREE.MeshBasicMaterial({ map: bandTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
   );
   shine.position.z = 0.012;
-  fold.inner.add(shine);
+  anchor.add(shine);
   stage.warm();
 
   // Peel along a diagonal from the bottom-right corner.

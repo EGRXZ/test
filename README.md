@@ -20,10 +20,13 @@ python3 -m http.server 8000
 | `assets/css/tokens.css` | Токены дизайн-системы (цвета, типографика, радиусы, тени) |
 | `assets/css/style.css` | Раскладка и компоненты |
 | `assets/js/main.js` | Сцены и анимации на скролле |
-| `assets/js/devices.js` | Процедурные 3D-модели: Fold, Flip, смартфон, часы, телефон в разборе |
+| `assets/models/fold-phone.glb` | Fold из Blender с анимацией `Fold` — первый экран и блок «Плёнка» |
+| `assets/models/fold-exploded.glb` | Fold в разборе из Blender, сжат Draco — блок «Неисправности» |
+| `assets/js/models.js` | Загрузка GLB и обёртки над ними: `setFold(t)` у телефона, раздвижение и подсветка слоёв у разборки |
+| `assets/js/devices.js` | Процедурные модели: Flip, смартфон, часы; запасной Fold на случай, если GLB не загрузится |
 | `assets/js/textures.js` | Содержимое экранов, нарисованное в canvas |
 | `assets/js/stage.js` | Рендерер: отдельный canvas на сцену, рисует только видимое |
-| `vendor/three/` | Three.js r170 (лежит локально, CDN не нужен) |
+| `vendor/three/` | Three.js r170, GLTFLoader, DRACOLoader и декодер Draco — всё лежит локально, CDN не нужен |
 
 ## 3D-сцены
 
@@ -33,3 +36,10 @@ python3 -m http.server 8000
 - **Плёнка**: старая плёнка отклеивается с уголка, новая ложится на её место.
 
 `prefers-reduced-motion` отключает фоновые анимации. Без WebGL сайт работает как обычная статическая страница.
+
+## Свои модели
+
+У `fold-phone.glb` скролл управляет клипом `Fold` в отрезке 0,72–2,0 с: там телефон из раскрытого становится сложенным.
+У `fold-exploded.glb` группы верхнего уровня называются как детали (`back`, `battery`, `board`, `audio`, `hinge`, `frame`,
+`display`, `glass`). Их позиция по Z в файле — разложенное состояние, позиции в собранном виде заданы в `ASSEMBLED_Z` в `models.js`.
+Новую модель можно положить на место старой под тем же именем; если структура изменится, правьте `models.js`.
