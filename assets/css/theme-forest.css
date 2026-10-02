@@ -3,7 +3,7 @@
    Token names are kept so style.css needs no changes; only values move. */
 :root {
   /* canvas & surfaces */
-  --color-void-black: #04202c;      /* Лес — page canvas */
+  --color-void-black: #000000;      /* page canvas stays black (client's call); Лес lives in cards and tiles */
   --color-graphite: #0b2b36;        /* Лес, lifted — cards, nav, chips */
   --color-shadow: #08242f;
   --color-charcoal: #304040;        /* Вечнозелёный — hover / active / inner layers */
@@ -30,7 +30,7 @@
   --surface-glass-strong: rgba(11, 43, 54, 0.95);
   --accent-rgb: 157, 184, 166;
 
-  --surface-void: #04202c;
+  --surface-void: #000000;
   --surface-graphite: #0b2b36;
   --surface-charcoal: #304040;
   --surface-warm-smoke: #5b7065;
