@@ -166,19 +166,20 @@ function notification(ctx, x, y, w, h, t, period = 9) {
   ctx.restore();
 }
 
-function appGrid(ctx, x, y, w, cols, rows, t, labels = true) {
+function gridCell(x, y, w, cols, k, labels) {
   const gap = w * 0.07;
   const s = (w - gap * (cols - 1)) / cols;
-  const tapAt = Math.floor(t / 2.5) % (cols * rows);
-  const tapP = (t % 2.5) / 2.5;
+  const r = Math.floor(k / cols), c = k % cols;
+  return { x: x + c * (s + gap), y: y + r * (s + s * (labels ? 0.62 : 0.3)), s };
+}
+
+function appGrid(ctx, x, y, w, cols, rows, labels = true) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const k = r * cols + c;
       const [name, glyph, gi] = APPS[k % APPS.length];
-      const ix = x + c * (s + gap);
-      const iy = y + r * (s + s * (labels ? 0.62 : 0.3));
-      const pressed = k === tapAt && tapP < 0.25 ? Math.sin((tapP / 0.25) * Math.PI) : 0;
-      icon(ctx, ix, iy, s, gi, glyph, pressed);
+      const { x: ix, y: iy, s } = gridCell(x, y, w, cols, k, labels);
+      icon(ctx, ix, iy, s, gi, glyph);
       if (labels) {
         ctx.fillStyle = C.white;
         font(ctx, 500, s * 0.19, -0.01);
@@ -190,7 +191,26 @@ function appGrid(ctx, x, y, w, cols, rows, t, labels = true) {
   }
 }
 
-function dock(ctx, x, y, w, h, t) {
+// A finger "tap" ripple travelling over the (static, pre-drawn) app grid.
+function tapRipple(ctx, x, y, w, cols, rows, t) {
+  const k = Math.floor(t / 2.5) % (cols * rows);
+  const p = (t % 2.5) / 2.5;
+  if (p > 0.3) return;
+  const { x: ix, y: iy, s } = gridCell(x, y, w, cols, k, true);
+  const q = p / 0.3;
+  ctx.save();
+  ctx.fillStyle = `rgba(255,255,255,${0.35 * (1 - q)})`;
+  rr(ctx, ix, iy, s, s, s * 0.26);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - q)})`;
+  ctx.lineWidth = s * 0.05;
+  ctx.beginPath();
+  ctx.arc(ix + s / 2, iy + s / 2, s * (0.25 + 0.5 * q), 0, 7);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function dock(ctx, x, y, w, h) {
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
   rr(ctx, x, y, w, h, h * 0.36);
   ctx.fill();
@@ -202,9 +222,13 @@ function dock(ctx, x, y, w, h, t) {
 /* ---------------- screen layouts ---------------- */
 
 // Classic smartphone home screen.
-function drawBar(ctx, w, h, t, img) {
+function baseBar(ctx, w, h, img) {
   bg(ctx, img, w, h);
   scrim(ctx, w, h);
+  appGrid(ctx, w * 0.1, h * 0.46, w * 0.8, 4, 2);
+  dock(ctx, w * 0.05, h * 0.86, w * 0.9, h * 0.085);
+}
+function drawBar(ctx, w, h, t) {
   const { hm, date } = now();
   statusBar(ctx, w, h * 0.035, h * 0.018, t);
   ctx.textAlign = 'center';
@@ -216,15 +240,18 @@ function drawBar(ctx, w, h, t, img) {
   font(ctx, 600, h * 0.105, -0.05);
   ctx.fillText(hm, w / 2, h * 0.215);
   repairWidget(ctx, w * 0.08, h * 0.26, w * 0.84, h * 0.13, t, h * 0.025);
-  appGrid(ctx, w * 0.1, h * 0.46, w * 0.8, 4, 2, t);
-  dock(ctx, w * 0.05, h * 0.86, w * 0.9, h * 0.085, t);
+  tapRipple(ctx, w * 0.1, h * 0.46, w * 0.8, 4, 2, t);
   notification(ctx, w * 0.04, h * 0.05, w * 0.92, h * 0.065, t);
 }
 
 // Flip inner screen: tall, with a crease in the middle (v = 0.5).
-function drawFlipInner(ctx, w, h, t, img) {
+function baseFlipInner(ctx, w, h, img) {
   bg(ctx, img, w, h);
   scrim(ctx, w, h);
+  appGrid(ctx, w * 0.1, h * 0.56, w * 0.8, 4, 2);
+  dock(ctx, w * 0.05, h * 0.87, w * 0.9, h * 0.075);
+}
+function drawFlipInner(ctx, w, h, t) {
   const { hm, date } = now();
   statusBar(ctx, w, h * 0.032, h * 0.016, t);
   ctx.textAlign = 'left';
@@ -236,15 +263,16 @@ function drawFlipInner(ctx, w, h, t, img) {
   font(ctx, 500, h * 0.018, -0.01);
   ctx.fillText(date, w * 0.085, h * 0.18);
   repairWidget(ctx, w * 0.08, h * 0.22, w * 0.84, h * 0.115, t, h * 0.022);
-  appGrid(ctx, w * 0.1, h * 0.56, w * 0.8, 4, 2, t);
-  dock(ctx, w * 0.05, h * 0.87, w * 0.9, h * 0.075, t);
+  tapRipple(ctx, w * 0.1, h * 0.56, w * 0.8, 4, 2, t);
   notification(ctx, w * 0.04, h * 0.045, w * 0.92, h * 0.058, t, 11);
 }
 
 // Flip cover screen: small square-ish, glanceable.
-function drawFlipCover(ctx, w, h, t, img) {
+function baseFlipCover(ctx, w, h, img) {
   bg(ctx, img, w, h);
   scrim(ctx, w, h, 0.35);
+}
+function drawFlipCover(ctx, w, h, t) {
   const { hm, short } = now();
   ctx.textAlign = 'right';
   ctx.textBaseline = 'alphabetic';
@@ -294,13 +322,15 @@ function gauge(ctx, cx, cy, r, p, value, label, lw) {
   font(ctx, 500, r * 0.36, 0.02);
   ctx.fillText(label, cx, cy + r * 1.45);
 }
-function drawWatch(ctx, w, h, t) {
-  const d = new Date();
+function baseWatch(ctx, w, h) {
   const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h * 0.62);
   g.addColorStop(0, '#1d140f');
   g.addColorStop(1, '#000000');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
+}
+function drawWatch(ctx, w, h, t) {
+  const d = new Date();
   const cx = w / 2, cy = h * 0.508, R = w * 0.43;
   const sec = d.getSeconds() + d.getMilliseconds() / 1000;
   ctx.lineCap = 'round';
@@ -358,40 +388,70 @@ function drawWatch(ctx, w, h, t) {
   ctx.fillText('FOLDPROFI', cx, h * 0.788);
 }
 
-export const LAYOUTS = { bar: drawBar, flipInner: drawFlipInner, flipCover: drawFlipCover, watch: drawWatch };
+// base: drawn once into a cached layer; live: drawn on top every update.
+export const LAYOUTS = {
+  bar: { base: baseBar, live: drawBar },
+  flipInner: { base: baseFlipInner, live: drawFlipInner },
+  flipCover: { base: baseFlipCover, live: drawFlipCover },
+  watch: { base: baseWatch, live: drawWatch },
+};
 
 /**
  * Replace a glTF material's emissive wallpaper with a live canvas screen.
  * Returns { tick(t) } — call each frame; it redraws at ~fps.
  */
-export function liveScreen(material, layout, { maxW = 640, fps = 15 } = {}) {
+// At most one screen re-uploads per animation frame, so several live screens
+// never stack their texture uploads into the same frame.
+let budgetT = -1;
+let budgetUsed = 0;
+
+export function liveScreen(material, layout, { maxW = 480, fps = 12 } = {}) {
   const src = material.emissiveMap;
   const img = src && src.image;
   const iw = (img && (img.width || img.naturalWidth)) || 720;
   const ih = (img && (img.height || img.naturalHeight)) || 1560;
   const k = Math.min(1, maxW / iw);
+  const W = Math.round(iw * k), H = Math.round(ih * k);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(iw * k);
-  canvas.height = Math.round(ih * k);
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext('2d');
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.flipY = false; // glTF UV convention
-  tex.anisotropy = 8;
+  // No mip chain: regenerating mips on every upload is the expensive part,
+  // and the screen is never shown much smaller than the canvas.
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
   if (src) { tex.wrapS = src.wrapS; tex.wrapT = src.wrapT; }
   material.emissiveMap = tex;
   material.emissive.setRGB(1, 1, 1);
   material.toneMapped = false;
   material.needsUpdate = true;
 
-  let last = -1;
-  const draw = LAYOUTS[layout];
-  const tick = (t) => {
-    if (t - last < 1 / fps) return;
+  // Static layer (wallpaper, scrim, icons, dock) is drawn once.
+  const { base, live } = LAYOUTS[layout];
+  const baseCanvas = document.createElement('canvas');
+  baseCanvas.width = W;
+  baseCanvas.height = H;
+  base(baseCanvas.getContext('2d'), W, H, img);
+
+  let last = -Infinity;
+  const draw = (t) => {
     last = t;
-    draw(ctx, canvas.width, canvas.height, t, img);
+    ctx.drawImage(baseCanvas, 0, 0);
+    live(ctx, W, H, t);
     tex.needsUpdate = true;
   };
-  tick(0);
+  const tick = (t) => {
+    const late = t - last;
+    if (late < 1 / fps) return;
+    if (t !== budgetT) { budgetT = t; budgetUsed = 0; }
+    // Share the per-frame budget, but never let a screen starve.
+    if (budgetUsed >= 1 && late < 3 / fps) return;
+    budgetUsed++;
+    draw(t);
+  };
+  draw(0);
   return { tick, canvas };
 }

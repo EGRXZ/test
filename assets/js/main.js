@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Stage, pointer, reducedMotion, webglAvailable } from './stage.js';
+import { Stage, MultiStage, pointer, reducedMotion, webglAvailable } from './stage.js';
 import { createFold, createFlip, createBar, createWatch, createExplodedFold, makeMaterials, planeGeo } from './devices.js';
 import { ensureFonts, scratchedFilmTexture } from './textures.js';
 import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone, createWatchModel } from './models.js';
@@ -142,8 +142,9 @@ async function initHero() {
 /* ------------------------------------------------------------------ */
 function initTiles() {
   const mats = makeMaterials();
+  const multi = new MultiStage(document.querySelector('.tiles__gl'), { dpr: 1.5 });
   return Promise.all([...document.querySelectorAll('.tile__canvas')].map(async (canvas) => {
-    const stage = new Stage(canvas, { fov: 26, z: 10, dpr: 1.5, envIntensity: 0.7 });
+    const stage = multi.addView(canvas, { fov: 26, z: 10, envIntensity: 0.7 });
     const type = canvas.dataset.model;
     const tile = canvas.closest('.tile');
     let device;

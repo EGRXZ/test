@@ -74,6 +74,83 @@ export class Stage {
   }
 }
 
+// One renderer drawing several small scenes into one overlay canvas (scissor per
+// view). Cheaper than a WebGL context per view: one context, one environment
+// map, one composited layer. Views expose the same fields scenes use on Stage.
+export class MultiStage {
+  constructor(canvas, { dpr = 1.5, exposure = 1.05 } = {}) {
+    this.canvas = canvas;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dpr));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = exposure;
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.autoClear = false;
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    this.views = [];
+    this.visible = false;
+    new ResizeObserver(() => this.resize()).observe(canvas);
+    new IntersectionObserver(([e]) => { this.visible = e.isIntersecting; }, { rootMargin: '120px' }).observe(canvas);
+    this.resize();
+    stages.add(this);
+    start();
+  }
+
+  resize() {
+    this.renderer.setSize(Math.max(1, this.canvas.clientWidth), Math.max(1, this.canvas.clientHeight), false);
+  }
+
+  // el: element whose box the view occupies (inside the overlay canvas' area).
+  addView(el, { fov = 30, z = 10, envIntensity = 0.55 } = {}) {
+    const scene = new THREE.Scene();
+    scene.environment = this.env;
+    scene.environmentIntensity = envIntensity;
+    addLights(scene);
+    const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
+    camera.position.set(0, 0, z);
+    const view = {
+      el, scene, camera, renderer: this.renderer, onFrame: null, visible: false,
+      viewSize(d = camera.position.z) {
+        const h = 2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        return { w: h * camera.aspect, h };
+      },
+      warm: () => (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => {
+        try { this.renderer.compile(scene, camera); } catch { /* non-fatal */ }
+      }),
+    };
+    new IntersectionObserver(([e]) => { view.visible = e.isIntersecting; }, { rootMargin: '60px' }).observe(el);
+    this.views.push(view);
+    return view;
+  }
+
+  frame(dt, t) {
+    const r = this.renderer;
+    const box = this.canvas.getBoundingClientRect();
+    r.setScissorTest(false);
+    r.clear();
+    r.setScissorTest(true);
+    for (const v of this.views) {
+      if (!v.visible) continue;
+      const b = v.el.getBoundingClientRect();
+      const w = b.width, h = b.height;
+      if (w < 1 || h < 1) continue;
+      const x = b.left - box.left;
+      const y = box.bottom - b.bottom; // WebGL origin is bottom-left
+      if (Math.abs(v.camera.aspect - w / h) > 1e-3) {
+        v.camera.aspect = w / h;
+        v.camera.updateProjectionMatrix();
+      }
+      if (v.onFrame) v.onFrame(dt, t);
+      r.setViewport(x, y, w, h);
+      r.setScissor(x, y, w, h);
+      r.render(v.scene, v.camera);
+    }
+  }
+}
+
 function addLights(scene) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x0a0a0a, 0.35));
   const key = new THREE.DirectionalLight(0xfff1e8, 2.2);
@@ -102,6 +179,7 @@ function loop(now) {
   const t = now / 1000;
   for (const s of stages) {
     if (!s.visible) continue;
+    if (s.frame) { s.frame(dt, t); continue; }
     if (s.onFrame) s.onFrame(dt, t);
     s.renderer.render(s.scene, s.camera);
   }

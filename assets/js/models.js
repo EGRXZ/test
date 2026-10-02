@@ -283,7 +283,7 @@ export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
     if (!done.has(name)) {
       const m = o.material.clone();
       done.set(name, m);
-      screens.push(liveScreen(m, layout, { maxW: layout === 'flipCover' ? 420 : 640 }));
+      screens.push(liveScreen(m, layout, { maxW: layout === 'flipCover' ? 320 : 480 }));
     }
     o.material = done.get(name);
   });
@@ -324,7 +324,7 @@ export async function createWatchModel(url = 'assets/models/watch.glb') {
   model.traverse((o) => {
     if (o.isMesh && o.material && o.material.name === 'Watch_Display' && !screen) {
       o.material = o.material.clone();
-      screen = liveScreen(o.material, 'watch', { maxW: 640, fps: 20 });
+      screen = liveScreen(o.material, 'watch', { maxW: 420, fps: 20 });
     }
   });
   // Fit the whole watch (strap included) to ~3 units tall, like the phones.
