@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Stage, pointer, reducedMotion, webglAvailable } from './stage.js';
 import { createFold, createFlip, createBar, createWatch, createExplodedFold, makeMaterials, planeGeo } from './devices.js';
 import { ensureFonts, scratchedFilmTexture } from './textures.js';
-import { createFoldPhone, createExplodedModel } from './models.js';
+import { createFoldPhone, createExplodedModel, createBarPhone, createFlipPhone } from './models.js';
 
 const { clamp, lerp, smoothstep, damp } = THREE.MathUtils;
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -16,8 +16,7 @@ if (!webglAvailable()) {
 } else {
   ensureFonts().then(async () => {
     try {
-      initTiles();
-      await Promise.all([initHero(), initIssues(), initFilm()]);
+      await Promise.all([initTiles(), initHero(), initIssues(), initFilm()]);
     } catch (err) {
       console.error(err);
       document.documentElement.classList.add('no-webgl');
@@ -143,15 +142,19 @@ async function initHero() {
 /* ------------------------------------------------------------------ */
 function initTiles() {
   const mats = makeMaterials();
-  document.querySelectorAll('.tile__canvas').forEach((canvas) => {
+  return Promise.all([...document.querySelectorAll('.tile__canvas')].map(async (canvas) => {
     const stage = new Stage(canvas, { fov: 26, z: 10, dpr: 1.5, envIntensity: 0.7 });
     const type = canvas.dataset.model;
     const tile = canvas.closest('.tile');
     let device;
     let fitH = 3.2;
-    if (type === 'flip') { device = createFlip(stage.renderer, mats); fitH = 3.4; }
+    // Blender models with live home screens; procedural ones if loading fails.
+    const glb = async (make, fallback) => {
+      try { return await make(); } catch (err) { console.warn(`${type} GLB failed, using procedural model`, err); return fallback(); }
+    };
+    if (type === 'flip') { device = await glb(createFlipPhone, () => createFlip(stage.renderer, mats)); fitH = 3.6; }
     else if (type === 'watch') { device = createWatch(stage.renderer, mats); fitH = 3.6; }
-    else { device = createBar(stage.renderer, mats); fitH = 3.3; }
+    else { device = await glb(createBarPhone, () => createBar(stage.renderer, mats)); fitH = 3.3; }
 
     const rig = new THREE.Group();
     rig.add(device.root);
@@ -191,19 +194,22 @@ function initTiles() {
         device.setFold(foldT);
         rig.rotation.y = -0.45 + Math.sin(t * 0.6) * 0.35 * m + dragYaw;
         rig.rotation.x = 0.18 + (1 - foldT) * 0.12;
+        rig.rotation.z = device.coverRoll ? Math.PI * ease(foldT) : 0;
         rig.position.y = -0.1 * (1 - foldT);
       } else if (type === 'watch') {
         rig.rotation.y = Math.sin(t * 0.7) * 0.6 * m + dragYaw + hoverMix * 0.5;
         rig.rotation.x = 0.25 + Math.sin(t * 0.5) * 0.08 * m;
         rig.rotation.z = -0.08;
       } else {
-        rig.rotation.y = t * 0.6 * m + dragYaw + hoverMix * Math.PI * 0.25;
+        // Mostly face the viewer so the live home screen reads; hover turns it to show the cameras.
+        rig.rotation.y = -0.3 + Math.sin(t * 0.5) * 0.45 * m + dragYaw + hoverMix * Math.PI;
         rig.rotation.x = 0.12;
         rig.rotation.z = -0.1;
       }
       rig.position.y += Math.sin(t * 1.3) * 0.002 * m;
+      if (device.tick) device.tick(t);
     };
-  });
+  }));
 }
 
 /* ------------------------------------------------------------------ */

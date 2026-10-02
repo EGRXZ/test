@@ -217,3 +217,93 @@ export async function createExplodedModel(url = 'assets/models/fold-exploded.glb
     },
   };
 }
+
+/* ---------------- BarPhone.glb / FlipPhone.glb (service tiles) ---------------- */
+// Both are modelled in metres; one world unit ≈ 5 cm keeps them in scale with each other.
+const TILE_SCALE = 20;
+
+function centreOn(holder, inner, root) {
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(holder, true).getCenter(new THREE.Vector3());
+}
+
+export async function createBarPhone(url = 'assets/models/bar-phone.glb') {
+  const { liveScreen } = await import('./screens.js');
+  const gltf = await loadModel(url);
+  const model = gltf.scene.clone(true);
+  const root = new THREE.Group();
+  const inner = new THREE.Group();
+  const holder = new THREE.Group();
+  holder.add(model);
+  holder.scale.setScalar(TILE_SCALE);
+  inner.add(holder);
+  root.add(inner);
+
+  let screen = null;
+  model.traverse((o) => {
+    if (o.isMesh && o.material && o.material.name === 'Bar_Display' && !screen) {
+      o.material = o.material.clone();
+      screen = liveScreen(o.material, 'bar');
+    }
+  });
+  const c = centreOn(holder, inner, root);
+  inner.position.set(-c.x, -c.y, -c.z);
+  return { root, tick: (t) => screen && screen.tick(t) };
+}
+
+// Clip "Fold": open until ~0.8 s, shut by ~2.1 s.
+const FLIP_START = 0.8;
+const FLIP_END = 2.1;
+
+export async function createFlipPhone(url = 'assets/models/flip-phone.glb') {
+  const { liveScreen } = await import('./screens.js');
+  const gltf = await loadModel(url);
+  const model = gltf.scene.clone(true);
+  const clip = gltf.animations.find((a) => a.name === 'Fold') || gltf.animations[0];
+  const root = new THREE.Group();
+  const inner = new THREE.Group();
+  const holder = new THREE.Group();
+  holder.add(model);
+  holder.scale.setScalar(TILE_SCALE);
+  inner.add(holder);
+  root.add(inner);
+
+  const mixer = new THREE.AnimationMixer(model);
+  if (clip) mixer.clipAction(clip).play();
+  const at = (t) => FLIP_START + THREE.MathUtils.clamp(t, 0, 1) * (FLIP_END - FLIP_START);
+
+  const screens = [];
+  const done = new Map();
+  model.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const name = o.material.name;
+    const layout = name === 'Flip_Display_Inner' ? 'flipInner' : name === 'Flip_Display_Cover' ? 'flipCover' : null;
+    if (!layout) return;
+    // Both inner halves share one material, so one live canvas drives both.
+    if (!done.has(name)) {
+      const m = o.material.clone();
+      done.set(name, m);
+      screens.push(liveScreen(m, layout, { maxW: layout === 'flipCover' ? 420 : 640 }));
+    }
+    o.material = done.get(name);
+  });
+
+  mixer.setTime(at(0));
+  const cOpen = centreOn(holder, inner, root);
+  mixer.setTime(at(1));
+  const cShut = centreOn(holder, inner, root);
+  const tmp = new THREE.Vector3();
+
+  return {
+    root,
+    // Shut, the cover screen reads upright only with the hinge on top.
+    coverRoll: true,
+    // t: 0 = open, 1 = shut
+    setFold(t) {
+      mixer.setTime(at(t));
+      tmp.lerpVectors(cOpen, cShut, t);
+      inner.position.set(-tmp.x, -tmp.y, -tmp.z);
+    },
+    tick(t) { screens.forEach((s) => s.tick(t)); },
+  };
+}

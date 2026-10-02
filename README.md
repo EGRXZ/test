@@ -22,6 +22,8 @@ python3 -m http.server 8000
 | `assets/js/main.js` | Сцены и анимации на скролле |
 | `assets/models/fold-phone.glb` | Fold из Blender с анимацией `Fold` — первый экран и блок «Плёнка» |
 | `assets/models/fold-exploded.glb` | Fold в разборе из Blender, сжат Draco — блок «Неисправности» |
+| `assets/models/bar-phone.glb`, `flip-phone.glb` | Смартфон и Flip из Blender — плитки «Смартфоны» и «Flip & Fold» |
+| `assets/js/screens.js` | Живые рабочие столы поверх обоев моделей: часы, виджет ремонта, иконки, уведомления |
 | `assets/js/models.js` | Загрузка GLB и обёртки над ними: `setFold(t)` у телефона, раздвижение и подсветка слоёв у разборки |
 | `assets/js/devices.js` | Процедурные модели: Flip, смартфон, часы; запасной Fold на случай, если GLB не загрузится |
 | `assets/js/textures.js` | Содержимое экранов, нарисованное в canvas |
