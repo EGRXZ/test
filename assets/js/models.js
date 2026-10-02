@@ -4,8 +4,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../../vendor/three/loaders/GLTFLoader.js';
 import { DRACOLoader } from '../../vendor/three/loaders/DRACOLoader.js';
+import { paletteTint } from './screens.js';
 
-const PEACH = new THREE.Color('#e3a081');
+const PEACH = new THREE.Color('#9db8a6'); // selection glow — Сосна, lightened
 
 const draco = new DRACOLoader().setDecoderPath('vendor/three/draco/');
 const loader = new GLTFLoader().setDRACOLoader(draco);
@@ -17,6 +18,29 @@ const cache = new Map();
 export function clampEdges(tex) {
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;
+}
+
+// Re-tint a model's baked wallpaper into the site palette (once per texture).
+const tinted = new WeakMap();
+export function tintTexture(tex) {
+  if (!tex || !tex.image) return tex;
+  if (tinted.has(tex)) return tinted.get(tex);
+  const img = tex.image;
+  const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  paletteTint(ctx, w, h);
+  const out = new THREE.CanvasTexture(c);
+  out.colorSpace = THREE.SRGBColorSpace;
+  out.flipY = tex.flipY;
+  out.wrapS = out.wrapT = THREE.ClampToEdgeWrapping;
+  out.anisotropy = 8;
+  tinted.set(tex, out);
+  tinted.set(out, out); // shared materials: don't tint twice
+  return out;
 }
 
 // A screen is glass over a lit panel: give it a mirror-like coat so the studio
@@ -147,6 +171,7 @@ export async function createFoldPhone(url = 'assets/models/fold-phone.glb') {
     mats.forEach((m) => {
       // Screens carry their wallpaper in an emissive map; keep them out of tone mapping.
       if (m.emissiveMap) {
+        m.emissiveMap = tintTexture(m.emissiveMap);
         m.emissiveMap.colorSpace = THREE.SRGBColorSpace;
         clampEdges(m.emissiveMap);
         screenGlass(m);
@@ -277,7 +302,7 @@ export async function createExplodedModel(url = 'assets/models/fold-exploded.glb
           const c = m.clone();
           c.userData.base = m.transparent ? m.opacity : 1;
           c.transparent = true;
-          if (c.map) { c.map.anisotropy = 8; clampEdges(c.map); }
+          if (c.map) { c.map = tintTexture(c.map); c.map.anisotropy = 8; clampEdges(c.map); }
           clones.set(m, c);
         }
         return clones.get(m);

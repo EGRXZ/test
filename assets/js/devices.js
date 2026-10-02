@@ -6,7 +6,7 @@ import {
   barTexture, watchTexture,
 } from './textures.js';
 
-const PEACH = new THREE.Color('#e3a081');
+const PEACH = new THREE.Color('#9db8a6'); // selection glow — Сосна, lightened
 
 /* ---------------- geometry helpers ---------------- */
 

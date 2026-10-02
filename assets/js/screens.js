@@ -5,13 +5,13 @@ import * as THREE from 'three';
 
 const FONT = '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const C = {
-  white: '#ffffff', fog: '#cccccc', ash: '#9e9e9e', graphite: '#191919',
-  charcoal: '#3d3d3d', peach: '#e3a081', violet: '#5351f3',
+  // FoldProfi palette: Лес #04202C · Вечнозелёный #304040 · Сосна #5B7065 · Туман #C9D1C8
+  white: '#f1f4f0', fog: '#c9d1c8', ash: '#93a39a', graphite: '#0b2b36',
+  charcoal: '#304040', peach: '#9db8a6', violet: '#5b7065',
 };
 const GRADS = [
-  ['#0056ff', '#c28e01'], ['#855dff', '#fe7900'], ['#591010', '#ff3b3b'],
-  ['#0657a1', '#051e22'], ['#5351f3', '#191919'], ['#3d3d3d', '#191919'],
-  ['#e3a081', '#8a4b2e'], ['#1e53a1', '#5351f3'],
+  ['#9db8a6', '#304040'], ['#c9d1c8', '#5b7065'], ['#5b7065', '#04202c'], ['#7f9c8a', '#0b2b36'],
+  ['#3e5c5a', '#04202c'], ['#304040', '#0b2b36'], ['#a9bdb0', '#4c6259'], ['#6f8a7c', '#163842'],
 ];
 const DAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -100,16 +100,33 @@ function scrim(ctx, w, h, a = 0.28) {
   ctx.fillRect(0, 0, w, h);
 }
 
-function bg(ctx, img, w, h) {
-  ctx.fillStyle = '#000';
+// Wallpapers come from the models in their own colours; re-tint them into the
+// palette (keep the picture's light and shape, take Сосна/Лес hues).
+export function paletteTint(ctx, w, h) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'color';
+  const g = ctx.createLinearGradient(0, 0, w, h);
+  g.addColorStop(0, '#9db8a6');
+  g.addColorStop(0.55, '#5b7065');
+  g.addColorStop(1, '#304040');
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
-  if (img) ctx.drawImage(img, 0, 0, w, h);
+  ctx.restore();
+}
+
+function bg(ctx, img, w, h) {
+  ctx.fillStyle = '#04202c';
+  ctx.fillRect(0, 0, w, h);
+  if (img) {
+    ctx.drawImage(img, 0, 0, w, h);
+    paletteTint(ctx, w, h);
+  }
 }
 
 // Card that cycles through repair stages with a filling bar.
 const STAGES = ['Диагностика', 'Замена экрана', 'Проверка', 'Готово ✓'];
 function repairWidget(ctx, x, y, w, h, t, r) {
-  ctx.fillStyle = 'rgba(25,25,25,0.78)';
+  ctx.fillStyle = 'rgba(8,36,46,0.8)';
   rr(ctx, x, y, w, h, r);
   ctx.fill();
   const cyc = (t % 12) / 12;
@@ -150,7 +167,7 @@ function notification(ctx, x, y, w, h, t, period = 9) {
   const yy = y - (1 - show) * (h + y);
   ctx.save();
   ctx.globalAlpha = Math.min(1, show * 1.4);
-  ctx.fillStyle = 'rgba(28,28,28,0.92)';
+  ctx.fillStyle = 'rgba(8,36,46,0.92)';
   rr(ctx, x, yy, w, h, h * 0.28);
   ctx.fill();
   const s = h * 0.56;
@@ -285,7 +302,7 @@ function drawFlipCover(ctx, w, h, t) {
   // pulsing "ready" chip
   const pulse = 0.5 + 0.5 * Math.sin(t * 3);
   const cw = w * 0.5, ch = h * 0.13, cx = w * 0.9 - cw, cy = h * 0.66;
-  ctx.fillStyle = 'rgba(25,25,25,0.85)';
+  ctx.fillStyle = 'rgba(8,36,46,0.86)';
   rr(ctx, cx, cy, cw, ch, ch / 2);
   ctx.fill();
   ctx.fillStyle = C.peach;
@@ -309,22 +326,22 @@ function gauge(ctx, cx, cy, r, p, value, label, lw) {
   const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25;
   ctx.lineCap = 'round';
   ctx.lineWidth = lw;
-  ctx.strokeStyle = '#2a2a2e';
+  ctx.strokeStyle = '#1d3a3f';
   ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
-  ctx.strokeStyle = '#e3965f';
+  ctx.strokeStyle = '#9db8a6';
   ctx.beginPath(); ctx.arc(cx, cy, r, a0, a0 + (a1 - a0) * Math.min(1, p)); ctx.stroke();
-  ctx.fillStyle = '#f2f0ec';
+  ctx.fillStyle = '#f1f4f0';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   font(ctx, 600, r * 0.42, -0.02);
   ctx.fillText(value, cx, cy);
-  ctx.fillStyle = '#8e8e93';
+  ctx.fillStyle = '#93a39a';
   font(ctx, 500, r * 0.36, 0.02);
   ctx.fillText(label, cx, cy + r * 1.45);
 }
 function baseWatch(ctx, w, h) {
   const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h * 0.62);
-  g.addColorStop(0, '#1d140f');
+  g.addColorStop(0, '#0a2b34');
   g.addColorStop(1, '#000000');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
@@ -339,7 +356,7 @@ function drawWatch(ctx, w, h, t) {
     const big = i % 5 === 0;
     const quarter = i % 15 === 0;
     const passed = ((i - sec + 60) % 60) > 54; // a short peach trail behind the seconds dot
-    ctx.strokeStyle = big || passed ? '#e3965f' : '#5a5a5e';
+    ctx.strokeStyle = big || passed ? '#9db8a6' : '#4a5f57';
     ctx.lineWidth = big ? w * 0.0085 : w * 0.0045;
     const r1 = R * (quarter ? 0.86 : big ? 0.88 : 0.93);
     ctx.beginPath();
@@ -348,17 +365,17 @@ function drawWatch(ctx, w, h, t) {
     ctx.stroke();
   }
   const sa = (sec / 60) * Math.PI * 2;
-  ctx.fillStyle = '#e3965f';
+  ctx.fillStyle = '#9db8a6';
   ctx.beginPath();
   ctx.arc(cx + Math.sin(sa) * R * 1.035, cy - Math.cos(sa) * R * 1.035, w * 0.012, 0, 7);
   ctx.fill();
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#e3965f';
+  ctx.fillStyle = '#9db8a6';
   font(ctx, 600, w * 0.045, 0.02);
   ctx.fillText(`${SHORT_DAYS[d.getDay()]}  ${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`, cx, h * 0.345);
-  ctx.fillStyle = '#f2f0ec';
+  ctx.fillStyle = '#f1f4f0';
   font(ctx, 600, w * 0.175, -0.03);
   const blink = d.getMilliseconds() < 500 ? 1 : 0.35;
   const hh = pad2(d.getHours()), mm = pad2(d.getMinutes());
@@ -383,7 +400,7 @@ function drawWatch(ctx, w, h, t) {
   gauge(ctx, w * 0.317, h * 0.627, gr * (1 + beat * 0.04), 0.55 + beat * 0.08, String(bpm), 'ПУЛЬС', w * 0.017);
   gauge(ctx, w * 0.683, h * 0.627, gr, (steps % 10000) / 10000, steps.toLocaleString('ru-RU'), 'ШАГИ', w * 0.017);
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#c27a52';
+  ctx.fillStyle = '#7f9c8a';
   font(ctx, 600, w * 0.034, 0.02);
   ctx.fillText('FOLDPROFI', cx, h * 0.788);
 }

@@ -373,7 +373,7 @@ async function initFilm() {
   const g = bctx.createLinearGradient(0, 0, 512, 0);
   g.addColorStop(0, 'rgba(255,255,255,0)');
   g.addColorStop(0.45, 'rgba(255,255,255,0)');
-  g.addColorStop(0.5, 'rgba(255,236,224,0.55)');
+  g.addColorStop(0.5, 'rgba(228,240,232,0.55)');
   g.addColorStop(0.55, 'rgba(255,255,255,0)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
   bctx.fillStyle = g;

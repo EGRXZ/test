@@ -7,7 +7,7 @@ export function studioEnvironment(renderer) {
   const scene = new THREE.Scene();
   const room = new THREE.Mesh(
     new THREE.BoxGeometry(24, 16, 24),
-    new THREE.MeshBasicMaterial({ color: 0x0b0b0b, side: THREE.BackSide }),
+    new THREE.MeshBasicMaterial({ color: 0x07191e, side: THREE.BackSide }),
   );
   scene.add(room);
   const panel = (w, h, intensity, pos, look, tint = 0xffffff) => {
@@ -22,7 +22,7 @@ export function studioEnvironment(renderer) {
   panel(10, 5, 2.6, [0, 7.5, 1], [0, 0, 0]); // overhead softbox
   panel(1.6, 10, 5.0, [-8, 0.5, 3], [0, 0, 0]); // key strip, left-front
   panel(1.2, 10, 3.6, [8, 0.5, -4], [0, 0, 0]); // rim strip, right-back
-  panel(1.0, 8, 2.2, [-6, 0, -7], [0, 0, 0], 0xffe6d6); // faint warm kicker
+  panel(1.0, 8, 2.2, [-6, 0, -7], [0, 0, 0], 0xe4efe8); // faint sage kicker
   panel(9, 1.2, 1.0, [0, -5, 7], [0, 0, 0]); // low front bounce
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(scene, 0.02).texture;

@@ -1,0 +1,39 @@
+/* FoldProfi client palette ("Forest") layered over the Umbrel tokens.
+   Лес #04202C · Вечнозелёный #304040 · Сосна #5B7065 · Туман #C9D1C8.
+   Token names are kept so style.css needs no changes; only values move. */
+:root {
+  /* canvas & surfaces */
+  --color-void-black: #04202c;      /* Лес — page canvas */
+  --color-graphite: #0b2b36;        /* Лес, lifted — cards, nav, chips */
+  --color-shadow: #08242f;
+  --color-charcoal: #304040;        /* Вечнозелёный — hover / active / inner layers */
+  --color-warm-smoke: #5b7065;      /* Сосна — dividers, muted chrome */
+
+  /* text */
+  --color-paper-white: #f1f4f0;     /* near-white with a fog cast */
+  --color-fog: #c9d1c8;             /* Туман — secondary text */
+  --color-ash: #93a39a;             /* tertiary / captions */
+  --color-steel-lilac: #7f9389;     /* muted sub-labels */
+
+  /* accents */
+  --color-ember-peach: #9db8a6;     /* emphasised words — Сосна, lightened for contrast on Лес */
+  --color-twilight-violet: #5b7065; /* Сосна — primary action fill */
+
+  /* service tiles: three greens instead of the app-store gradients */
+  --gradient-app-store-blue-gold: linear-gradient(-26deg, #04202c 0%, #304040 100%);
+  --gradient-app-store-violet-ember: linear-gradient(-26deg, #304040 0%, #5b7065 100%);
+  --gradient-app-store-crimson: linear-gradient(-26deg, #04202c 0%, #5b7065 100%);
+  --color-app-store-crimson: #5b7065;
+
+  /* tinted surfaces used by translucent panels */
+  --surface-glass: rgba(11, 43, 54, 0.82);
+  --surface-glass-strong: rgba(11, 43, 54, 0.95);
+  --accent-rgb: 157, 184, 166;
+
+  --surface-void: #04202c;
+  --surface-graphite: #0b2b36;
+  --surface-charcoal: #304040;
+  --surface-warm-smoke: #5b7065;
+
+  --shadow-lg: rgba(1, 16, 22, 0.45) 0px 10px 20px 0px;
+}

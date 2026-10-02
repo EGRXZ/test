@@ -5,15 +5,15 @@ import * as THREE from 'three';
 
 const C = {
   black: '#000000',
-  graphite: '#191919',
-  charcoal: '#3d3d3d',
-  smoke: '#61635d',
+  graphite: '#0b2b36',
+  charcoal: '#304040',
+  smoke: '#5b7065',
   white: '#ffffff',
-  fog: '#cccccc',
-  ash: '#9e9e9e',
-  lilac: '#797985',
-  peach: '#e3a081',
-  violet: '#5351f3',
+  fog: '#c9d1c8',
+  ash: '#93a39a',
+  lilac: '#7f9389',
+  peach: '#9db8a6',
+  violet: '#5b7065',
 };
 
 const FONT = '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -49,18 +49,18 @@ function glow(ctx, x, y, r, color, alpha) {
 function wallpaper(ctx, w, h, seed = 0) {
   ctx.fillStyle = C.black;
   ctx.fillRect(0, 0, w, h);
-  glow(ctx, w * (0.18 + seed * 0.1), h * 0.12, w * 0.9, 'rgba(227,160,129,0.55)', 0.9);
-  glow(ctx, w * 0.95, h * 0.95, w * 0.8, 'rgba(83,81,243,0.55)', 0.7);
-  glow(ctx, w * 0.5, h * 0.55, w * 0.5, 'rgba(6,87,161,0.35)', 0.5);
+  glow(ctx, w * (0.18 + seed * 0.1), h * 0.12, w * 0.9, 'rgba(157,184,166,0.55)', 0.9);
+  glow(ctx, w * 0.95, h * 0.95, w * 0.8, 'rgba(91,112,101,0.55)', 0.7);
+  glow(ctx, w * 0.5, h * 0.55, w * 0.5, 'rgba(48,64,64,0.4)', 0.5);
 }
 
 const GRADS = [
-  ['rgba(0,86,255,0.6)', '#c28e01'],
-  ['rgba(133,93,255,0.7)', '#fe7900'],
-  ['#591010', '#ff3b3b'],
-  ['#0657a1', '#051e22'],
-  ['#3d3d3d', '#191919'],
-  ['#5351f3', '#191919'],
+  ['#9db8a6', '#304040'],
+  ['#c9d1c8', '#5b7065'],
+  ['#5b7065', '#04202c'],
+  ['#7f9c8a', '#0b2b36'],
+  ['#304040', '#0b2b36'],
+  ['#5b7065', '#0b2b36'],
 ];
 
 function appIcon(ctx, x, y, s, i, glyph) {
@@ -133,7 +133,7 @@ export function foldInnerTexture(aspect, renderer) {
 
   // Repair status widget (right half)
   const wx = w * 0.53, wy = h * 0.1, ww = w * 0.41, wh = h * 0.25;
-  ctx.fillStyle = 'rgba(25,25,25,0.82)';
+  ctx.fillStyle = 'rgba(8,36,46,0.82)';
   rr(ctx, wx, wy, ww, wh, h * 0.03);
   ctx.fill();
   ctx.fillStyle = C.peach;
@@ -199,7 +199,7 @@ export function foldCoverTexture(aspect, renderer) {
 
   // Notification
   const nx = pad * 0.6, ny = h * 0.7, nw = w - pad * 1.2, nh = h * 0.16;
-  ctx.fillStyle = 'rgba(25,25,25,0.88)';
+  ctx.fillStyle = 'rgba(8,36,46,0.88)';
   rr(ctx, nx, ny, nw, nh, w * 0.07);
   ctx.fill();
   appIcon(ctx, nx + w * 0.05, ny + nh / 2 - w * 0.09, w * 0.18, 1, 'F');
@@ -249,7 +249,7 @@ export function flipCoverTexture(aspect, renderer) {
   const { c, ctx } = canvas(w, h);
   ctx.fillStyle = C.black;
   ctx.fillRect(0, 0, w, h);
-  glow(ctx, w * 0.2, h * 0.1, w * 0.9, 'rgba(227,160,129,0.6)', 0.9);
+  glow(ctx, w * 0.2, h * 0.1, w * 0.9, 'rgba(157,184,166,0.6)', 0.9);
   ctx.fillStyle = C.white;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
@@ -280,7 +280,7 @@ export function barTexture(aspect, renderer) {
   ctx.fillText('10:24', w / 2, h * 0.27);
 
   const nx = pad * 0.6, ny = h * 0.72, nw = w - pad * 1.2, nh = h * 0.1;
-  ctx.fillStyle = 'rgba(25,25,25,0.85)';
+  ctx.fillStyle = 'rgba(8,36,46,0.85)';
   rr(ctx, nx, ny, nw, nh, w * 0.06);
   ctx.fill();
   appIcon(ctx, nx + w * 0.04, ny + nh / 2 - w * 0.07, w * 0.14, 0, 'F');
@@ -315,7 +315,7 @@ export function watchTexture(aspect, renderer) {
     ctx.stroke();
   }
   // Activity ring
-  ctx.strokeStyle = 'rgba(227,160,129,0.22)';
+  ctx.strokeStyle = 'rgba(157,184,166,0.22)';
   ctx.lineWidth = 18;
   ctx.beginPath();
   ctx.arc(cx, cy, R * 0.66, 0, Math.PI * 2);
