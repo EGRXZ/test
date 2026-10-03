@@ -267,6 +267,7 @@ p { margin: 0; }
 }
 .marquee__track {
   display: flex;
+  align-items: center;
   gap: 64px;
   width: max-content;
   animation: marquee 38s linear infinite;
@@ -284,6 +285,8 @@ p { margin: 0; }
 .marquee__track .brand:hover { background-color: var(--color-paper-white); }
 /* Simple Icons wordmarks sit in a square viewBox: scale them up to read at the same weight */
 .marquee__track .brand--wordmark { -webkit-mask-size: 112px auto; mask-size: 112px auto; }
+/* tightly cropped raster wordmarks (Tecno, Realme): fit the height like the others */
+.marquee__track .brand--logo { width: 96px; -webkit-mask-size: contain; mask-size: contain; height: 20px; align-self: center; }
 .marquee__track span:not(.brand) {
   font-size: 28px;
   font-weight: 600;
