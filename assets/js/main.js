@@ -149,7 +149,6 @@ async function initHero() {
 
     hero.style.setProperty('--hero-text', String(1 - smoothstep(sp, 0.5, 0.64)));
     hero.style.setProperty('--hero-lift', `${smoothstep(sp, 0.45, 0.66) * 60}px`);
-    hero.style.setProperty('--hint', String(1 - smoothstep(sp, 0, 0.05)));
     stats.forEach((el, i) => el.style.setProperty('--s', String(smoothstep(sp, 0.66 + i * 0.05, 0.78 + i * 0.05))));
   };
 }

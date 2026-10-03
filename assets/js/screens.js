@@ -154,7 +154,7 @@ function repairWidget(ctx, x, y, w, h, t, r) {
 
 // Banner that drops in from the top every few seconds.
 const NOTES = [
-  ['FoldProfi', 'Телефон готов — можно забирать', 1],
+  ['FoldProfi', 'Телефон готов, можно забирать', 1],
   ['Сообщения', 'Мастер: стекло заменили, всё ок', 7],
   ['FoldProfi', 'Гарантия 1 год активирована', 1],
 ];
